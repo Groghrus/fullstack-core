@@ -1,0 +1,1 @@
+<!-- stub: Устойчивость (Resilience) - retries -->

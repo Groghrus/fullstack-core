@@ -1,0 +1,19 @@
+{
+  "name": "fullstack-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Личный тренажёр и учебник по backend, system design и языкам (TS/Go/Java)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @core/web",
+    "build": "npm run build -w @core/web",
+    "lint": "npm run lint -w @core/web",
+    "typecheck": "npm run typecheck -w @core/web"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
