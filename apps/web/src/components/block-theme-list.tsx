@@ -31,7 +31,7 @@ export function BlockThemeList({ blockId, themes }: BlockThemeListProps) {
                 'h-full cursor-pointer transition-colors hover:border-primary hover:bg-accent/40',
               )}
             >
-              <CardContent className="flex items-center gap-3 p-4">
+              <CardContent className="flex items-center gap-2.5 p-3 sm:gap-3 sm:p-4">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted text-sm">
                   {done ? (
                     <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
@@ -42,17 +42,27 @@ export function BlockThemeList({ blockId, themes }: BlockThemeListProps) {
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{title}</div>
-                  <div className="text-xs text-muted-foreground">{t.themeId}</div>
+                  <div className="truncate font-medium" title={title}>
+                    {title}
+                  </div>
+                  <div className="hidden truncate text-xs text-muted-foreground sm:block">
+                    {t.themeId}
+                  </div>
                 </div>
                 {done ? (
-                  <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                    изучено
+                  <Badge className="shrink-0 whitespace-nowrap bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                    <span className="hidden sm:inline">изучено</span>
+                    <span className="sm:hidden">✓</span>
                   </Badge>
                 ) : started ? (
-                  <Badge variant="secondary">открыто</Badge>
+                  <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                    <span className="hidden sm:inline">открыто</span>
+                  </Badge>
                 ) : (
-                  <Badge variant="outline">новое</Badge>
+                  <Badge variant="outline" className="shrink-0 whitespace-nowrap">
+                    <span className="hidden sm:inline">новое</span>
+                    <span className="sm:hidden">•</span>
+                  </Badge>
                 )}
               </CardContent>
             </Card>

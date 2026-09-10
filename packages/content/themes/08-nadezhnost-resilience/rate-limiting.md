@@ -1,7 +1,7 @@
 ---
 id: rate-limiting
 title: Rate Limiting (Ограничение количества запросов)
-block: 03-nadezhnost-resilience
+block: 08-nadezhnost-resilience
 tags: [rate-limiting, resilience, api, networks, security]
 order: 1
 related:

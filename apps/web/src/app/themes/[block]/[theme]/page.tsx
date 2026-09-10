@@ -55,7 +55,7 @@ export default async function ThemePage({ params }: PageProps) {
         : 'Средний'
 
   return (
-    <article className="mx-auto max-w-3xl px-8 py-10">
+    <article className="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-10">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
