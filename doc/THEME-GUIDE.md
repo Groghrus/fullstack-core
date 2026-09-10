@@ -8,7 +8,7 @@
 ---
 id: rate-limiting            # латиницей, kebab-case
 title: Rate Limiting (Ограничение количества запросов)
-block: 03-nadezhnost-resilience   # id блока из packages/content/registry.json
+block: 08-nadezhnost-resilience   # id блока из packages/content/registry.json
 tags: [rate-limiting, resilience, api, networks]
 order: 1                      # порядок внутри блока
 related:                      # связи с другими темами (вручную)

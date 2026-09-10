@@ -1,9 +1,32 @@
 {
   "blocks": [
     {
-      "id": "01-mikroservisnaya-arhitektura",
-      "title": "Микросервисная архитектура",
+      "id": "01-protokoly-set",
+      "title": "Протоколы и сеть",
       "order": 1,
+      "themes": [
+        "dns",
+        "tcp-vs-udp",
+        "http-2-http-3",
+        "grpc",
+        "websockets",
+        "long-polling",
+        "server-sent-events"
+      ]
+    },
+    {
+      "id": "02-api",
+      "title": "API",
+      "order": 2,
+      "themes": [
+        "api-versioning",
+        "semantic-versioning"
+      ]
+    },
+    {
+      "id": "03-mikroservisnaya-arhitektura",
+      "title": "Микросервисная архитектура",
+      "order": 3,
       "themes": [
         "service-discovery",
         "api-gateway",
@@ -15,9 +38,9 @@
       ]
     },
     {
-      "id": "02-asinhronnoe-vzaimodejstvie",
+      "id": "04-asinhronnoe-vzaimodejstvie",
       "title": "Асинхронное взаимодействие",
-      "order": 2,
+      "order": 4,
       "themes": [
         "message-queues",
         "pub-sub",
@@ -28,23 +51,21 @@
       ]
     },
     {
-      "id": "03-nadezhnost-resilience",
-      "title": "Устойчивость (Resilience)",
-      "order": 3,
+      "id": "05-parallelizm",
+      "title": "Параллелизм и многопоточность",
+      "order": 5,
       "themes": [
-        "rate-limiting",
-        "circuit-breakers",
-        "timeouts",
-        "retries",
-        "exponential-backoff",
-        "idempotency",
-        "backpressure"
+        "race-conditions",
+        "deadlocks",
+        "thread-safety",
+        "memory-leaks",
+        "garbage-collection"
       ]
     },
     {
-      "id": "04-bazy-dannyh",
+      "id": "06-bazy-dannyh",
       "title": "Базы данных",
-      "order": 4,
+      "order": 6,
       "themes": [
         "database-indexing",
         "query-optimization",
@@ -61,9 +82,9 @@
       ]
     },
     {
-      "id": "05-raspredelennye-sistemy",
+      "id": "07-raspredelennye-sistemy",
       "title": "Распределённые системы",
-      "order": 5,
+      "order": 7,
       "themes": [
         "cap-theorem",
         "eventual-consistency",
@@ -74,21 +95,23 @@
       ]
     },
     {
-      "id": "06-parallelizm",
-      "title": "Параллелизм и многопоточность",
-      "order": 6,
+      "id": "08-nadezhnost-resilience",
+      "title": "Устойчивость (Resilience)",
+      "order": 8,
       "themes": [
-        "race-conditions",
-        "deadlocks",
-        "thread-safety",
-        "memory-leaks",
-        "garbage-collection"
+        "rate-limiting",
+        "circuit-breakers",
+        "timeouts",
+        "retries",
+        "exponential-backoff",
+        "idempotency",
+        "backpressure"
       ]
     },
     {
-      "id": "07-keshirovanie",
+      "id": "09-keshirovanie",
       "title": "Кэширование и производительность",
-      "order": 7,
+      "order": 9,
       "themes": [
         "caching-basics",
         "edge-caching",
@@ -102,32 +125,27 @@
       ]
     },
     {
-      "id": "08-protokoly-set",
-      "title": "Протоколы и сеть",
-      "order": 8,
-      "themes": [
-        "dns",
-        "tcp-vs-udp",
-        "http-2-http-3",
-        "grpc",
-        "websockets",
-        "long-polling",
-        "server-sent-events"
-      ]
-    },
-    {
-      "id": "09-api",
-      "title": "API",
-      "order": 9,
-      "themes": [
-        "api-versioning",
-        "semantic-versioning"
-      ]
-    },
-    {
-      "id": "10-bezopasnost",
-      "title": "Безопасность",
+      "id": "10-nablyudaemost",
+      "title": "Мониторинг и наблюдаемость (Observability)",
       "order": 10,
+      "themes": [
+        "monitoring",
+        "logging",
+        "distributed-tracing",
+        "metrics",
+        "alerts",
+        "health-checks",
+        "liveness-readiness-probes",
+        "slo",
+        "sli",
+        "error-budgets",
+        "observability"
+      ]
+    },
+    {
+      "id": "11-bezopasnost",
+      "title": "Безопасность",
+      "order": 11,
       "themes": [
         "oauth",
         "jwt-rotation",
@@ -146,9 +164,9 @@
       ]
     },
     {
-      "id": "11-devops-infrastruktura",
+      "id": "12-devops-infrastruktura",
       "title": "DevOps и инфраструктура",
-      "order": 11,
+      "order": 12,
       "themes": [
         "docker",
         "kubernetes",
@@ -157,24 +175,6 @@
         "terraform",
         "helm-charts",
         "build-caching"
-      ]
-    },
-    {
-      "id": "12-nablyudaemost",
-      "title": "Мониторинг и наблюдаемость (Observability)",
-      "order": 12,
-      "themes": [
-        "monitoring",
-        "logging",
-        "distributed-tracing",
-        "metrics",
-        "alerts",
-        "health-checks",
-        "liveness-readiness-probes",
-        "slo",
-        "sli",
-        "error-budgets",
-        "observability"
       ]
     },
     {

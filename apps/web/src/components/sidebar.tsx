@@ -58,7 +58,7 @@ export function Sidebar({
   )
 
   return (
-    <aside className="flex h-full w-72 flex-col border-r bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-full w-80 flex-col border-r bg-sidebar text-sidebar-foreground">
       {/* Поиск */}
       <div className="space-y-2 border-b p-3">
         <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export function Sidebar({
                     ) : (
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                     )}
-                    <span className="flex-1 truncate text-left">
+                    <span className="min-w-0 flex-1 break-words text-left">
                       {block.order}. {block.title}
                     </span>
                     {countDone > 0 && countDone === blockThemes.length ? (
@@ -182,14 +182,16 @@ export function Sidebar({
                             key={t.themeId}
                             href={`/themes/${t.path}`}
                             className={cn(
-                              'flex items-center gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                              'flex items-start gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                               isActiveTheme && 'bg-accent text-accent-foreground',
                             )}
                           >
-                            <span className="shrink-0">
+                            <span className="shrink-0 leading-snug">
                               {done ? '✅' : p ? '📖' : ''}
                             </span>
-                            <span className="min-w-0 flex-1 truncate">{title}</span>
+                            <span className="min-w-0 flex-1 break-words leading-snug">
+                              {title}
+                            </span>
                           </Link>
                         )
                       })}
