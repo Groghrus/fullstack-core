@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
 import { getBlocks, getAllThemes } from '@core/content'
 import { AppShell } from '../components/app-shell'
+import { PwaRegister } from '../components/pwa-register'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Fullstack Core',
   description: 'Личный тренажёр и учебник по backend, system design и языкам',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icons/icon-192.png',
+  },
 }
 
 export default function RootLayout({
@@ -26,6 +32,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <PwaRegister />
         <AppShell blocks={blocks} themes={themes}>
           {children}
         </AppShell>
