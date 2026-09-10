@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getBlocks, getAllThemes, getThemeTitle } from '@core/content'
+import { getBlocks, getAllThemes } from '@core/content'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default function Home() {
@@ -12,10 +12,12 @@ export default function Home() {
   const totalThemes = themes.length
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-10">
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight">Fullstack Core</h1>
-        <p className="mt-2 text-lg text-muted-foreground">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Fullstack Core
+        </h1>
+        <p className="mt-2 text-base text-muted-foreground sm:text-lg">
           Личный тренажёр и учебник: backend, system design, языки (
           TypeScript / Go / Java ). {totalThemes} тем в 15 блоках.
         </p>
@@ -26,11 +28,11 @@ export default function Home() {
           <Link key={block.id} href={`/blocks/${block.id}`} className="block">
             <Card className="h-full transition-colors hover:border-primary hover:bg-accent/50">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="truncate text-sm font-semibold" title={block.title}>
                     {block.order}. {block.title}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="shrink-0 text-xs text-muted-foreground">
                     {countByBlock(block.id)}
                   </span>
                 </div>
@@ -40,15 +42,6 @@ export default function Home() {
         ))}
       </div>
 
-      <p className="mt-8 text-sm text-muted-foreground">
-        Начните с первой расписанной темы:{' '}
-        <Link
-          href="/themes/03-nadezhnost-resilience/rate-limiting"
-          className="font-medium underline"
-        >
-          {getThemeTitle('rate-limiting')}
-        </Link>
-      </p>
     </div>
   )
 }

@@ -33,7 +33,7 @@ export function ThemeActions({
 
   return (
     <>
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <Button
           variant={done ? 'default' : 'outline'}
           size="sm"
@@ -56,10 +56,12 @@ export function ThemeActions({
         {prevId ? (
           <Link
             href={`/themes/${blockId}/${prevId}`}
-            className="rounded-lg border p-3 text-sm hover:bg-accent"
+            className="min-w-0 rounded-lg border p-3 text-sm hover:bg-accent"
           >
-            <div className="text-xs text-muted-foreground">← Предыдущая</div>
-            <div className="mt-1 font-medium">{getThemeTitle(prevId)}</div>
+            <div className="truncate text-xs text-muted-foreground">← Предыдущая</div>
+            <div className="mt-1 truncate font-medium">
+              {getThemeTitle(prevId)}
+            </div>
           </Link>
         ) : (
           <div />
@@ -67,10 +69,12 @@ export function ThemeActions({
         {nextId ? (
           <Link
             href={`/themes/${blockId}/${nextId}`}
-            className="rounded-lg border p-3 text-right text-sm hover:bg-accent"
+            className="min-w-0 rounded-lg border p-3 text-right text-sm hover:bg-accent"
           >
-            <div className="text-xs text-muted-foreground">Следующая →</div>
-            <div className="mt-1 font-medium">{getThemeTitle(nextId)}</div>
+            <div className="truncate text-xs text-muted-foreground">Следующая →</div>
+            <div className="mt-1 truncate font-medium">
+              {getThemeTitle(nextId)}
+            </div>
           </Link>
         ) : (
           <div />

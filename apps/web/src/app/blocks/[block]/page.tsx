@@ -21,7 +21,7 @@ export default async function BlockPage({ params }: PageProps) {
   const themes = getAllThemes().filter((t) => t.blockId === block)
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-8 sm:py-10">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

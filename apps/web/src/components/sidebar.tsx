@@ -2,7 +2,14 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Search, ChevronDown, ChevronRight, Bookmark } from 'lucide-react'
+import {
+  Search,
+  ChevronDown,
+  ChevronRight,
+  Bookmark,
+  X,
+  PanelLeftClose,
+} from 'lucide-react'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
 import type { ThemeProgress } from '@core/config'
@@ -18,6 +25,8 @@ interface SidebarProps {
   progress: Record<string, ThemeProgress>
   activeBlock?: string
   activeTheme?: string
+  onClose?: () => void
+  onCollapse?: () => void
 }
 
 export function Sidebar({
@@ -26,6 +35,8 @@ export function Sidebar({
   progress,
   activeBlock,
   activeTheme,
+  onClose,
+  onCollapse,
 }: SidebarProps) {
   const [query, setQuery] = useState('')
   const [bookmarksOnly, setBookmarksOnly] = useState(false)
@@ -71,6 +82,28 @@ export function Sidebar({
             )}
           </div>
           <ThemeProvider />
+          {onCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Свернуть меню"
+              title="Свернуть меню"
+              onClick={onCollapse}
+              className="hidden lg:inline-flex"
+            >
+              <PanelLeftClose className="size-4" />
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Закрыть меню"
+              onClick={onClose}
+            >
+              <X className="size-4" />
+            </Button>
+          )}
         </div>
         <Button
           variant={bookmarksOnly ? 'default' : 'outline'}
@@ -149,14 +182,14 @@ export function Sidebar({
                             key={t.themeId}
                             href={`/themes/${t.path}`}
                             className={cn(
-                              'block rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                              'flex items-center gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                               isActiveTheme && 'bg-accent text-accent-foreground',
                             )}
                           >
-                            <span className="mr-1.5">
+                            <span className="shrink-0">
                               {done ? '✅' : p ? '📖' : ''}
                             </span>
-                            {title}
+                            <span className="min-w-0 flex-1 truncate">{title}</span>
                           </Link>
                         )
                       })}

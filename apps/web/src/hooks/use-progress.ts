@@ -11,6 +11,11 @@ type Listener = () => void
 let cache: ProgressMap | null = null
 const listeners = new Set<Listener>()
 
+// Стабильная ссылка для серверного снапшота: React требует, чтобы
+// getServerSnapshot возвращал закэшированное значение (новый объект → 
+// предупреждение «should be cached» и риск бесконечного цикла).
+const EMPTY = Object.freeze<ProgressMap>({})
+
 function read(): ProgressMap {
   if (cache) return cache
   try {
@@ -41,8 +46,16 @@ function getSnapshot() {
   return read()
 }
 
+// Во время SSR/гидрации localStorage недоступен: сервер всегда отрендерит
+// пустой прогресс, а клиент после гидрации подхватит реальные данные.
+// Если вернуть сюда данные из localStorage — HTML не совпадёт и React
+// выдаст ошибку гидрации (hydration mismatch).
+function getServerSnapshot(): ProgressMap {
+  return EMPTY
+}
+
 export function useProgress() {
-  const progress = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const progress = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
   function update(themeId: string, patch: Partial<Omit<ThemeProgress, 'themeId'>>) {
     const current = progress[themeId]
