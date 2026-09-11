@@ -48,3 +48,11 @@ export function getBlocks() {
 export function findBlockByTheme(themeId: string) {
   return contentRegistry.blocks.find((b) => b.themes.includes(themeId))
 }
+
+export { buildIndex, extractText, search, tokenize } from './search'
+export type {
+  SearchDoc,
+  SearchIndex,
+  SearchResult,
+  SearchThemeInput,
+} from './search'

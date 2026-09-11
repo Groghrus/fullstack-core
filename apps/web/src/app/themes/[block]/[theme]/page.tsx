@@ -9,6 +9,7 @@ import { splitTheme } from '@/lib/theme-content'
 import { ThemeActions } from '@/components/theme-actions'
 import { Badge } from '@/components/ui/badge'
 import { CONTENT_ROOT } from '@/lib/content-root'
+import {ArrowLeft} from 'lucide-react';
 
 export function generateStaticParams() {
   return getAllThemes().map((t) => ({
@@ -41,6 +42,10 @@ export default async function ThemePage({ params }: PageProps) {
   const difficulty = frontmatter.difficulty || 'medium'
   const status = frontmatter.status || 'draft'
 
+  // Заголовок уже выводится в <h1> шапки — убираем дублирующий первый
+  // `# Заголовок` из markdown, чтобы на странице не было двух H1.
+  const bodyWithoutHeading = body.replace(/^\s*#\s+.*(?:\r?\n|$)/, '')
+
   // соседние темы в блоке: предыдущая/следующая
   const idx = blockMeta.themes.indexOf(theme)
   const prevId = idx > 0 ? blockMeta.themes[idx - 1] : null
@@ -60,7 +65,8 @@ export default async function ThemePage({ params }: PageProps) {
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Каталог
+          <ArrowLeft size="16"/>
+          Каталог
       </Link>
 
       <header className="mb-8">
@@ -86,7 +92,7 @@ export default async function ThemePage({ params }: PageProps) {
       />
 
       <div>
-        <Markdown source={body} />
+        <Markdown source={bodyWithoutHeading} />
       </div>
 
       {quiz && <Quiz source={quiz} />}
