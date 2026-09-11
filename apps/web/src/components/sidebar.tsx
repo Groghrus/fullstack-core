@@ -78,7 +78,6 @@ export function Sidebar({
   onCollapse,
 }: SidebarProps) {
   const [query, setQuery] = useState('')
-  const [bookmarksOnly, setBookmarksOnly] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
     Object.fromEntries(
       blocks.map((b) => [b.id, false]) // все раскрыты по умолчанию
@@ -178,15 +177,18 @@ export function Sidebar({
             </Button>
           )}
         </div>
-        <Button
-          variant={bookmarksOnly ? 'default' : 'outline'}
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => setBookmarksOnly((v) => !v)}
+        <Link
+          href="/bookmarks"
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent',
+          )}
         >
-          <Bookmark className="mr-1 size-4" />
-          Закладки ({bookmarkedIds.size})
-        </Button>
+          <Bookmark className="size-4" />
+          Закладки
+          <span className="ml-auto text-xs text-muted-foreground">
+            {bookmarkedIds.size}
+          </span>
+        </Link>
       </div>
 
       <ScrollArea className="flex-1">
@@ -244,9 +246,7 @@ export function Sidebar({
             .map((block) => {
               const isActive = block.id === activeBlock
               const open = collapsed[block.id]
-              const blockThemes = byBlock(block.id).filter((t) =>
-                bookmarksOnly ? bookmarkedIds.has(t.themeId) : true,
-              )
+              const blockThemes = byBlock(block.id)
               const countDone = byBlock(block.id).filter(
                 (t) => progress[t.themeId]?.status === 'done',
               ).length

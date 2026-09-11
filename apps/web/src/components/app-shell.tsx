@@ -41,7 +41,9 @@ export function AppShell({ blocks, themes, children }: AppShellProps) {
       ? blocks.find((b) => b.id === pathSegments[1])?.title
       : pathSegments[0] === 'themes' && pathSegments[2]
         ? getThemeTitle(pathSegments[2])
-        : undefined
+        : pathSegments[0] === 'bookmarks'
+          ? 'Закладки'
+          : undefined
 
   const sidebarProps = {
     blocks,
