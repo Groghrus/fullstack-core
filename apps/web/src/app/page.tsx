@@ -12,7 +12,7 @@ export default function Home() {
   const totalThemes = themes.length
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-8 sm:py-10">
+    <div className="mx-auto max-w-4xl px-2 py-2 sm:px-8 sm:py-10">
       <header className="mb-8 sm:mb-10">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Fullstack Core
@@ -27,7 +27,7 @@ export default function Home() {
         {blocks.map((block) => (
           <Link key={block.id} href={`/blocks/${block.id}`} className="block">
             <Card className="h-full transition-colors hover:border-primary hover:bg-accent/50">
-              <CardContent className="p-4">
+              <CardContent className="p-2">
                 <div className="flex min-w-0 items-center justify-between gap-2">
                   <span className="truncate text-sm font-semibold" title={block.title}>
                     {block.order}. {block.title}
