@@ -14,6 +14,7 @@ import {
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
 import type { ThemeProgress } from '@core/config'
+import { version } from '../../../../package.json'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -313,6 +314,10 @@ export function Sidebar({
           )}
         </nav>
       </ScrollArea>
+
+      <footer className="border-t p-6">
+        <p className="text-xs text-muted-foreground text-center">v {version}</p>
+      </footer>
     </aside>
   )
 }
