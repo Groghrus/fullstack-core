@@ -33,6 +33,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
+  // Пользовательский поиск и API — всегда через сеть (ответы не кешируем).
+  if (url.pathname.startsWith('/api/')) return
+
   // Навигация: сначала сеть, при ошибке — офлайн-фолбэк из кеша последних страниц.
   if (request.mode === 'navigate') {
     event.respondWith(

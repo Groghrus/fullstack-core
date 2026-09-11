@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Search,
   ChevronDown,
@@ -9,6 +9,7 @@ import {
   Bookmark,
   X,
   PanelLeftClose,
+  Loader2,
 } from 'lucide-react'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
@@ -18,6 +19,44 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { ThemeProvider } from '@/components/theme-provider'
+
+interface SearchResultItem {
+  themeId: string
+  blockId: string
+  title: string
+  path: string
+  snippet: string
+  score: number
+}
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Подсвечивает вхождения слов запроса (через split(re) нечётные части — совпадения) */
+function highlight(text: string, query: string, keyPrefix: string) {
+  const words = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2)
+  if (!words.length) return text
+  const re = new RegExp(`(${words.map(escapeRegExp).join('|')})`, 'gi')
+  return text
+    .split(re)
+    .map((part, i) =>
+      i % 2 === 1 ? (
+        <mark
+          key={`${keyPrefix}-${i}`}
+          className="rounded bg-amber-200/80 px-0.5 text-inherit dark:bg-amber-500/30"
+        >
+          {part}
+        </mark>
+      ) : (
+        <span key={`${keyPrefix}-${i}`}>{part}</span>
+      ),
+    )
+}
 
 interface SidebarProps {
   blocks: Block[]
@@ -45,8 +84,42 @@ export function Sidebar({
       blocks.map((b) => [b.id, false]) // все раскрыты по умолчанию
     ),
   )
+  const [results, setResults] = useState<SearchResultItem[] | null>(null)
+  const [searching, setSearching] = useState(false)
 
   const q = query.trim().toLowerCase()
+  const showSearch = q.length >= 2
+
+  // Полнотекстовый поиск по контенту тем (серверный индекс). При неудаче
+  // (нет индекса/сети) автоматически остаёмся на локальном фильтре названий.
+  useEffect(() => {
+    if (q.length < 2) {
+      setResults(null)
+      setSearching(false)
+      return
+    }
+    const ctrl = new AbortController()
+    setSearching(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          signal: ctrl.signal,
+        })
+        if (!res.ok) throw new Error(String(res.status))
+        const data = await res.json()
+        setResults(data.results ?? [])
+      } catch (e) {
+        if ((e as Error)?.name === 'AbortError') return
+        setResults(null)
+      } finally {
+        if (!ctrl.signal.aborted) setSearching(false)
+      }
+    }, 250)
+    return () => {
+      clearTimeout(timer)
+      ctrl.abort()
+    }
+  }, [q])
 
   const byBlock = (blockId: string) =>
     themes.filter((t) => t.blockId === blockId)
@@ -118,7 +191,44 @@ export function Sidebar({
 
       <ScrollArea className="flex-1">
         <nav className="p-2">
-          {blocks
+          {showSearch && results === null && searching ? (
+            <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Поиск…
+            </div>
+          ) : showSearch && results !== null ? (
+            results.length === 0 ? (
+              <p className="px-2 py-3 text-sm text-muted-foreground">
+                Ничего не найдено
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                {results.map((r) => {
+                  const block = blocks.find((b) => b.id === r.blockId)
+                  return (
+                    <Link
+                      key={r.themeId}
+                      href={`/themes/${r.path}`}
+                      className="block rounded-md px-2 py-1.5 hover:bg-accent"
+                    >
+                      <span className="block break-words text-sm font-medium">
+                        {highlight(r.title, q, `t-${r.themeId}`)}
+                      </span>
+                      <span className="block break-words text-xs text-muted-foreground">
+                        {block?.order}. {block?.title}
+                      </span>
+                      {r.snippet && (
+                        <span className="mt-0.5 block break-words text-xs text-muted-foreground">
+                          {highlight(r.snippet, q, `s-${r.themeId}`)}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )
+          ) : (
+            blocks
             .filter((b) => {
               if (!q) return true
               const bTitle = b.title.toLowerCase()
@@ -199,7 +309,8 @@ export function Sidebar({
                   )}
                 </div>
               )
-            })}
+            })
+          )}
         </nav>
       </ScrollArea>
     </aside>
