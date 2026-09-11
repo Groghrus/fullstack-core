@@ -9,6 +9,7 @@ import { splitTheme } from '@/lib/theme-content'
 import { ThemeActions } from '@/components/theme-actions'
 import { Badge } from '@/components/ui/badge'
 import { CONTENT_ROOT } from '@/lib/content-root'
+import {ArrowLeft} from 'lucide-react';
 
 export function generateStaticParams() {
   return getAllThemes().map((t) => ({
@@ -60,7 +61,8 @@ export default async function ThemePage({ params }: PageProps) {
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Каталог
+          <ArrowLeft size="16"/>
+          Каталог
       </Link>
 
       <header className="mb-8">

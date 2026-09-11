@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getBlocks, getAllThemes } from '@core/content'
 import { BlockThemeList } from '@/components/block-theme-list'
 import { Badge } from '@/components/ui/badge'
+import {ArrowLeft} from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ block: string }>
@@ -26,7 +27,8 @@ export default async function BlockPage({ params }: PageProps) {
         href="/"
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Каталог
+          <ArrowLeft size="16"/>
+          Каталог
       </Link>
 
       <header className="mb-8">

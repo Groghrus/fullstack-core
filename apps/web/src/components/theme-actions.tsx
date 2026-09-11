@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { Bookmark, Check, Circle } from 'lucide-react'
+import {ArrowLeft, ArrowRight, Bookmark, Check, Circle} from 'lucide-react';
 import { useProgress } from '@/hooks/use-progress'
 import { Button } from '@/components/ui/button'
 import { getThemeTitle } from '@core/content'
@@ -56,9 +56,12 @@ export function ThemeActions({
         {prevId ? (
           <Link
             href={`/themes/${blockId}/${prevId}`}
-            className="min-w-0 rounded-lg border p-3 text-sm hover:bg-accent"
+            className="w-fit max-w-full min-w-0 justify-self-start rounded-lg border p-3 text-sm hover:bg-accent"
           >
-            <div className="truncate text-xs text-muted-foreground">← Предыдущая</div>
+              <div className="flex items-center justify-start">
+                  <ArrowLeft size="16"/>
+                  <div className="truncate text-s text-muted-foreground">Предыдущая</div>
+              </div>
             <div className="mt-1 truncate font-medium">
               {getThemeTitle(prevId)}
             </div>
@@ -69,9 +72,13 @@ export function ThemeActions({
         {nextId ? (
           <Link
             href={`/themes/${blockId}/${nextId}`}
-            className="min-w-0 rounded-lg border p-3 text-right text-sm hover:bg-accent"
+            className="w-fit max-w-full min-w-0 justify-self-end rounded-lg border p-3 text-right text-sm hover:bg-accent"
           >
-            <div className="truncate text-xs text-muted-foreground">Следующая →</div>
+              <div className="flex items-center justify-end">
+                  <div className="truncate text-s text-muted-foreground">Следующая</div>
+                  <ArrowRight size="16"/>
+              </div>
+
             <div className="mt-1 truncate font-medium">
               {getThemeTitle(nextId)}
             </div>
