@@ -42,6 +42,10 @@ export default async function ThemePage({ params }: PageProps) {
   const difficulty = frontmatter.difficulty || 'medium'
   const status = frontmatter.status || 'draft'
 
+  // Заголовок уже выводится в <h1> шапки — убираем дублирующий первый
+  // `# Заголовок` из markdown, чтобы на странице не было двух H1.
+  const bodyWithoutHeading = body.replace(/^\s*#\s+.*(?:\r?\n|$)/, '')
+
   // соседние темы в блоке: предыдущая/следующая
   const idx = blockMeta.themes.indexOf(theme)
   const prevId = idx > 0 ? blockMeta.themes[idx - 1] : null
@@ -88,7 +92,7 @@ export default async function ThemePage({ params }: PageProps) {
       />
 
       <div>
-        <Markdown source={body} />
+        <Markdown source={bodyWithoutHeading} />
       </div>
 
       {quiz && <Quiz source={quiz} />}
