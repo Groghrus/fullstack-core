@@ -51,7 +51,7 @@ flowchart TD
     C --> F[user 100, 5000 RN]
     D --> G[user 1M+]
     E --> H[user 2M+]
-    Note: каждый шард - отдельный сервер/инстанс БД
+    A@{ shape: brace-r, label: "каждый шард - отдельный сервер/инстанс БД" }
 ```
 
 ```mermaid

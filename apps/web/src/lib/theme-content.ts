@@ -14,7 +14,7 @@ export function splitTheme(content: string): ParsedTheme {
   if (fmMatch) {
     for (const line of fmMatch[1].split('\n')) {
       const mm = line.match(/^([^:]+):\s*(.*)$/)
-      if (mm) frontmatter[mm[1].trim()] = mm[2].trim()
+      if (mm) frontmatter[mm[1].trim()] = unquote(mm[2].trim())
     }
     body = content.slice(fmMatch[0].length)
   }
@@ -28,4 +28,16 @@ export function splitTheme(content: string): ParsedTheme {
   }
 
   return { frontmatter, body, quiz }
+}
+
+/** Снимает одинарные/двойные кавычки вокруг значения YAML-подобного frontmatter */
+function unquote(value: string): string {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    return value.slice(1, -1)
+  }
+  return value
 }
