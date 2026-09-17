@@ -114,7 +114,7 @@ req.end()
 ```go
 import "net/http"
 
-// Go автоматически включаeт HTTP/2 по TLS (ALPN h2), если
+// Go автоматически включает HTTP/2 по TLS (ALPN h2), если
 // сервер SetEnableHTTP2, для h1 достаточно простого сервера.
 func main() {
 	mux := http.NewServeMux()
@@ -179,7 +179,7 @@ import (
 conn, err := grpc.NewClient("orders:443",
 	grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})),
 )
-// conn автоматически иcпользует HTTP/2 (ALPN h2) с мультиплексированием потоков.
+// conn автоматически использует HTTP/2 (ALPN h2) с мультиплексированием потоков.
 ```
 
 ### Java: проверка и приоритеты потоков (WebClient)
@@ -271,7 +271,7 @@ web.get().retrieve().bodyToMono(String.class)
 ### Q4
 **Как происходит выбор протокола между клиентом и сервером?**
 - [ ] Всегда HTTP/2
-- [x] ALPN при TLS-рукопожатии: сервер предлагает h2/h3/ h1, клиент выбирает
+- [x] ALPN при TLS-рукопожатии: сервер предлагает h2/h3/h1, клиент выбирает
 - [ ] По IP-адресу
 - [ ] По HTTP-заголовку
 
