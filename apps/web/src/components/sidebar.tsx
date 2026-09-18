@@ -11,6 +11,8 @@ import {
   PanelLeftClose,
   Loader2,
 } from 'lucide-react'
+import { GitHubButton } from '@/components/ui/github-button'
+import { DownloadApkButton } from '@/components/ui/download-apk-button'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
 import type { ThemeProgress } from '@core/config'
@@ -315,8 +317,16 @@ export function Sidebar({
         </nav>
       </ScrollArea>
 
-      <footer className="border-t p-6">
-        <p className="text-xs text-muted-foreground text-center">v {version}</p>
+      <footer className="border-t p-3 space-y-2">
+        <div className="flex items-center gap-1">
+            <DownloadApkButton size="sm" variant="outline" className="flex-1 gap-1.5 text-xs h-8 px-2">
+                APK
+            </DownloadApkButton>
+          <GitHubButton size="sm" variant="outline" className="flex-1 gap-1.5 text-xs h-8 px-2">
+            GitHub
+          </GitHubButton>
+        </div>
+        <p className="text-[10px] text-muted-foreground text-center">v {version}</p>
       </footer>
     </aside>
   )
