@@ -22,7 +22,8 @@ export function useProgress() {
         const handleStorage = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY && e.newValue) {
                 try {
-                    setProgress(JSON.parse(e.newValue))
+                    const parsed = JSON.parse(e.newValue)
+                    setTimeout(() => setProgress(parsed), 0)
                 } catch {
                     /* ignore */
                 }
@@ -32,7 +33,8 @@ export function useProgress() {
         const handleCustomProgress = (e: Event) => {
             const customEvent = e as CustomEvent<ProgressMap>
             if (customEvent.detail) {
-                setProgress(customEvent.detail)
+                const detail = customEvent.detail
+                setTimeout(() => setProgress(detail), 0)
             }
         }
 
@@ -49,7 +51,9 @@ export function useProgress() {
         setProgress(nextMap)
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap))
-            window.dispatchEvent(new CustomEvent('progress-update', { detail: nextMap }))
+            setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('progress-update', { detail: nextMap }))
+            }, 0)
         } catch (error) {
             console.error('[progress] failed to save:', error)
         }
