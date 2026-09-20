@@ -49,7 +49,6 @@ export function AppShell({ blocks, themes, children }: AppShellProps) {
   const sidebarProps = {
     blocks,
     themes,
-    progress,
     activeBlock,
     activeTheme,
   }

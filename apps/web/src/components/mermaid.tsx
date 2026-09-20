@@ -48,7 +48,7 @@ export function Mermaid({ code, id }: { code: string; id: string }) {
   return (
     <div
       ref={containerRef}
-      className="my-4 overflow-auto rounded-lg border bg-card p-3"
+      className="my-4 overflow-auto rounded-lg border bg-card p-3 text-card-foreground dark:[&_.node_text]:!fill-white dark:[&_.edgeLabel_text]:!fill-white [&_.node_text]:!fill-slate-900 [&_.edgeLabel_text]:!fill-slate-800 [&_.node_label]:!text-slate-900 dark:[&_.node_label]:!text-white"
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     />
   )

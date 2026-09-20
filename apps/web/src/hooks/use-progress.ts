@@ -28,9 +28,32 @@ export function useProgress() {
                 }
             }
         }
+
+        const handleCustomProgress = (e: Event) => {
+            const customEvent = e as CustomEvent<ProgressMap>
+            if (customEvent.detail) {
+                setProgress(customEvent.detail)
+            }
+        }
+
         window.addEventListener('storage', handleStorage)
-        return () => window.removeEventListener('storage', handleStorage)
+        window.addEventListener('progress-update', handleCustomProgress as EventListener)
+
+        return () => {
+            window.removeEventListener('storage', handleStorage)
+            window.removeEventListener('progress-update', handleCustomProgress as EventListener)
+        }
     }, [])
+
+    const dispatchChange = (nextMap: ProgressMap) => {
+        setProgress(nextMap)
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap))
+            window.dispatchEvent(new CustomEvent('progress-update', { detail: nextMap }))
+        } catch (error) {
+            console.error('[progress] failed to save:', error)
+        }
+    }
 
     const update = useCallback(
         (
@@ -39,14 +62,7 @@ export function useProgress() {
         ) => {
             setProgress((current) => {
                 const previous = current[themeId]
-
-                // Если статус уже 'done', а новый патч пытается поставить 'in_progress' без явного приказа,
-                // либо если это автоматический markRead — защищаем статус 'done'.
                 let targetStatus = patch.status
-                if (previous?.status === 'done' && targetStatus === 'in_progress') {
-                    // Если статус уже done, не даем перезаписать на in_progress через автоматические вызовы (например, markRead)
-                    targetStatus = 'done'
-                }
 
                 const next: ThemeProgress = {
                     ...previous,
@@ -62,15 +78,7 @@ export function useProgress() {
                     [themeId]: next,
                 }
 
-                try {
-                    localStorage.setItem(
-                        STORAGE_KEY,
-                        JSON.stringify(nextMap),
-                    )
-                } catch (error) {
-                    console.error('[progress] failed to save:', error)
-                }
-
+                dispatchChange(nextMap)
                 return nextMap
             })
         },
@@ -103,11 +111,7 @@ export function useProgress() {
                     ...current,
                     [themeId]: next,
                 }
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap))
-                } catch {
-                    /* ignore */
-                }
+                dispatchChange(nextMap)
                 return nextMap
             })
         },
@@ -118,7 +122,6 @@ export function useProgress() {
         (themeId: string) => {
             setProgress((current) => {
                 const prevTheme = current[themeId]
-                // КРИТИЧЕСКИ ВАЖНО: Если тема уже 'done', НИКОГДА не перезаписываем её статус на 'in_progress'
                 if (prevTheme?.status === 'done') {
                     return current
                 }
@@ -135,11 +138,7 @@ export function useProgress() {
                         ...current,
                         [themeId]: next,
                     }
-                    try {
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextMap))
-                    } catch {
-                        /* ignore */
-                    }
+                    dispatchChange(nextMap)
                     return nextMap
                 }
                 return current

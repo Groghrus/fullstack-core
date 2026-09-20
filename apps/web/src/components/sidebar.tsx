@@ -15,7 +15,7 @@ import { GitHubButton } from '@/components/ui/github-button'
 import { DownloadApkButton } from '@/components/ui/download-apk-button'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
-import type { ThemeProgress } from '@core/config'
+import { useProgress } from '@/hooks/use-progress'
 import versionData from '../../../../package.json'
 const version = versionData.version
 import { cn } from '@/lib/utils'
@@ -65,7 +65,6 @@ function highlight(text: string, query: string, keyPrefix: string) {
 interface SidebarProps {
   blocks: Block[]
   themes: { blockId: string; themeId: string; path: string }[]
-  progress: Record<string, ThemeProgress>
   activeBlock?: string
   activeTheme?: string
   onClose?: () => void
@@ -75,12 +74,12 @@ interface SidebarProps {
 export function Sidebar({
   blocks,
   themes,
-  progress,
   activeBlock,
   activeTheme,
   onClose,
   onCollapse,
 }: SidebarProps) {
+  const { progress } = useProgress()
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
     Object.fromEntries(
@@ -346,15 +345,13 @@ export function Sidebar({
       </ScrollArea>
 
       {/* Футер сайдбара */}
-      <div className="border-t p-3 space-y-2">
-          <div className="flex items-center gap-2">
-              <div className="text-lg font-normal text-muted-foreground">
-                  v{version}
-              </div>
-              <GitHubButton />
-              <DownloadApkButton />
+      <div className="border-t p-3 flex items-center gap-2 space-x-2 space-y-2">
+          <div className="text-l font-normal text-muted-foreground">
+              v{version}
           </div>
 
+          <GitHubButton />
+          <DownloadApkButton />
       </div>
     </aside>
   )
