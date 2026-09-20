@@ -15,7 +15,7 @@ interface ParsedQuestion {
   draft: boolean
 }
 
-function parseQuiz(source: string): ParsedQuestion[] {
+function parseQuiz(source: string, themeId?: string): ParsedQuestion[] {
   // Ищем секцию ## Вопросы
   const match = source.match(/^##\s+Вопросы[\s\S]*$/m)
   if (!match) return []
@@ -27,7 +27,7 @@ function parseQuiz(source: string): ParsedQuestion[] {
   for (const raw of qBlocks) {
     const lines = raw.split('\n')
     const idLine = lines[0]?.trim() || 'Q'
-    const id = idLine
+    const id = themeId ? `${themeId}-${idLine}` : idLine
 
     // prompt: первая строка после ### — это **...** (иногда с (draft))
     const body = lines.slice(1)
@@ -66,8 +66,8 @@ function parseQuiz(source: string): ParsedQuestion[] {
   return questions
 }
 
-export function Quiz({ source }: { source: string }) {
-  const questions = useMemo(() => parseQuiz(source), [source])
+export function Quiz({ source, themeId }: { source: string; themeId?: string }) {
+  const questions = useMemo(() => parseQuiz(source, themeId), [source, themeId])
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({})
 

@@ -95,7 +95,7 @@ export default async function ThemePage({ params }: PageProps) {
         <Markdown source={bodyWithoutHeading} />
       </div>
 
-      {quiz && <Quiz source={quiz} />}
+      {quiz && <Quiz source={quiz} themeId={theme} />}
     </article>
   )
 }
