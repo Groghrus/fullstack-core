@@ -11,10 +11,13 @@ import {
   PanelLeftClose,
   Loader2,
 } from 'lucide-react'
+import { GitHubButton } from '@/components/ui/github-button'
+import { DownloadApkButton } from '@/components/ui/download-apk-button'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
-import type { ThemeProgress } from '@core/config'
-import { version } from '../../../../package.json'
+import { useProgress } from '@/hooks/use-progress'
+import versionData from '../../../../package.json'
+const version = versionData.version
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -62,7 +65,6 @@ function highlight(text: string, query: string, keyPrefix: string) {
 interface SidebarProps {
   blocks: Block[]
   themes: { blockId: string; themeId: string; path: string }[]
-  progress: Record<string, ThemeProgress>
   activeBlock?: string
   activeTheme?: string
   onClose?: () => void
@@ -72,12 +74,12 @@ interface SidebarProps {
 export function Sidebar({
   blocks,
   themes,
-  progress,
   activeBlock,
   activeTheme,
   onClose,
   onCollapse,
 }: SidebarProps) {
+  const { progress } = useProgress()
   const [query, setQuery] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
     Object.fromEntries(
@@ -86,6 +88,11 @@ export function Sidebar({
   )
   const [results, setResults] = useState<SearchResultItem[] | null>(null)
   const [searching, setSearching] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const q = query.trim().toLowerCase()
   const showSearch = q.length >= 2
@@ -114,46 +121,23 @@ export function Sidebar({
       } finally {
         if (!ctrl.signal.aborted) setSearching(false)
       }
-    }, 250)
+    }, 200)
     return () => {
-      clearTimeout(timer)
       ctrl.abort()
+      clearTimeout(timer)
     }
   }, [q])
 
-  const byBlock = (blockId: string) =>
-    themes.filter((t) => t.blockId === blockId)
-
-  const bookmarkedIds = new Set(
-    Object.values(progress)
-      .filter((p) => p.bookmarked)
-      .map((p) => p.themeId),
-  )
+  const byBlock = (blockId: string) => themes.filter((t) => t.blockId === blockId)
 
   return (
-    <aside className="flex h-full w-80 flex-col border-r bg-sidebar text-sidebar-foreground">
-      {/* Поиск */}
-      <div className="space-y-2 border-b p-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Поиск темы..."
-              className="pl-8 pr-8"
-            />
-            {query && (
-              <button
-                type="button"
-                aria-label="Сбросить поиск"
-                onClick={() => setQuery('')}
-                className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center justify-center rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                <span className="text-base leading-none">×</span>
-              </button>
-            )}
-          </div>
+    <aside className="flex h-full w-80 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
+      {/* Шапка сайдбара */}
+      <div className="flex h-14 items-center justify-between border-b px-4">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <span>Fullstack Core</span>
+        </Link>
+        <div className="flex items-center gap-1">
           <ThemeProvider />
           {onCollapse && (
             <Button
@@ -162,9 +146,8 @@ export function Sidebar({
               aria-label="Свернуть меню"
               title="Свернуть меню"
               onClick={onCollapse}
-              className="hidden lg:inline-flex"
             >
-              <PanelLeftClose className="size-4" />
+              <PanelLeftClose className="size-5" />
             </Button>
           )}
           {onClose && (
@@ -172,152 +155,204 @@ export function Sidebar({
               variant="ghost"
               size="icon"
               aria-label="Закрыть меню"
+              title="Закрыть меню"
               onClick={onClose}
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </Button>
           )}
         </div>
-        <Link
-          href="/bookmarks"
-          className={cn(
-            'flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent',
-          )}
-        >
-          <Bookmark className="size-4" />
-          Закладки
-          <span className="ml-auto text-xs text-muted-foreground">
-            {bookmarkedIds.size}
-          </span>
-        </Link>
       </div>
 
+      {/* Поиск */}
+      <div className="p-3 border-b">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по темам..."
+            className="pl-9 pr-8 text-sm"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              aria-label="Очистить поиск"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Навигация / Список тем */}
       <ScrollArea className="flex-1">
-        <nav className="p-2">
-          {showSearch && results === null && searching ? (
-            <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Поиск…
-            </div>
-          ) : showSearch && results !== null ? (
-            results.length === 0 ? (
-              <p className="px-2 py-3 text-sm text-muted-foreground">
-                Ничего не найдено
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                {results.map((r) => {
-                  const block = blocks.find((b) => b.id === r.blockId)
-                  return (
+        <div className="p-2">
+          {showSearch ? (
+            <div className="space-y-1">
+              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                Результаты поиска
+                {searching && (
+                  <Loader2 className="inline ml-1 size-3 animate-spin" />
+                )}
+              </div>
+              {results === null && !searching ? (
+                // Локальный фоллбэк по названиям тем
+                themes
+                  .filter((t) =>
+                    getThemeTitle(t.themeId).toLowerCase().includes(q),
+                  )
+                  .map((t) => (
                     <Link
-                      key={r.themeId}
-                      href={`/themes/${r.path}`}
-                      className="block rounded-md px-2 py-1.5 hover:bg-accent"
+                      key={`${t.blockId}-${t.themeId}`}
+                      href={`/themes/${t.path}`}
+                      className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
                     >
-                      <span className="block break-words text-sm font-medium">
-                        {highlight(r.title, q, `t-${r.themeId}`)}
-                      </span>
-                      <span className="block break-words text-xs text-muted-foreground">
-                        {block?.order}. {block?.title}
-                      </span>
-                      {r.snippet && (
-                        <span className="mt-0.5 block break-words text-xs text-muted-foreground">
-                          {highlight(r.snippet, q, `s-${r.themeId}`)}
-                        </span>
-                      )}
+                      <div className="font-medium">
+                        {highlight(getThemeTitle(t.themeId), q, t.themeId)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {t.blockId}
+                      </div>
                     </Link>
+                  ))
+              ) : results && results.length > 0 ? (
+                results.map((r) => (
+                  <Link
+                    key={`${r.blockId}-${r.themeId}`}
+                    href={`/themes/${r.path}`}
+                    className="block rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <div className="font-medium">
+                      {highlight(r.title, q, r.themeId)}
+                    </div>
+                    {r.snippet && (
+                      <div className="line-clamp-2 text-xs text-muted-foreground">
+                        {highlight(r.snippet, q, `${r.themeId}-snip`)}
+                      </div>
+                    )}
+                  </Link>
+                ))
+              ) : !searching ? (
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  Ничего не найдено
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <nav className="space-y-1">
+              {/* Ссылка на закладки */}
+              <Link
+                href="/bookmarks"
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent',
+                  activeTheme === 'bookmarks' && 'bg-accent text-accent-foreground',
+                )}
+              >
+                <Bookmark className="size-4 text-amber-500" />
+                <span>Закладки</span>
+              </Link>
+
+              <div className="my-2 border-t" />
+
+              {/* Список блоков и тем */}
+              {blocks
+                .filter((block) => {
+                  const blockThemes = byBlock(block.id)
+                  const hasQ =
+                    block.title.toLowerCase().includes(q) ||
+                    blockThemes.some(
+                      (t) =>
+                        t.themeId.toLowerCase().includes(q) ||
+                        getThemeTitle(t.themeId).toLowerCase().includes(q),
+                    )
+                  return hasQ
+                })
+                .map((block) => {
+                  const isActive = block.id === activeBlock
+                  const open = collapsed[block.id]
+                  const blockThemes = byBlock(block.id)
+                  const countDone = mounted
+                    ? blockThemes.filter(
+                        (t) => progress[t.themeId]?.status === 'done',
+                      ).length
+                    : 0
+
+                  return (
+                    <div key={block.id} className="mb-1">
+                      <button
+                        onClick={() =>
+                          setCollapsed((c) => ({ ...c, [block.id]: !c[block.id] }))
+                        }
+                        className={cn(
+                          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent',
+                          isActive && !q ? 'bg-accent text-accent-foreground' : '',
+                        )}
+                      >
+                        {open ? (
+                          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                        )}
+                        <span className="min-w-0 flex-1 break-words text-left">
+                          {block.order}. {block.title}
+                        </span>
+                        {mounted && countDone > 0 && countDone === blockThemes.length ? (
+                          <span className="text-xs text-emerald-500">✓</span>
+                        ) : mounted && countDone > 0 ? (
+                          <span className="text-xs text-muted-foreground">
+                            {countDone}/{blockThemes.length}
+                          </span>
+                        ) : null}
+                      </button>
+
+                      {open && (
+                        <div className="ml-4 mt-0.5 space-y-0.5 border-l pl-2">
+                          {blockThemes.map((t) => {
+                            const p = progress[t.themeId]
+                            const done = mounted && p?.status === 'done'
+                            const started = mounted && p
+                            const title = getThemeTitle(t.themeId)
+                            const isActiveTheme =
+                              t.themeId === activeTheme && !q
+                            return (
+                              <Link
+                                key={t.themeId}
+                                href={`/themes/${t.path}`}
+                                className={cn(
+                                  'flex items-start gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                                  isActiveTheme && 'bg-accent text-accent-foreground',
+                                )}
+                              >
+                                <span className="shrink-0 leading-snug">
+                                  {done ? '✅' : started ? '📖' : ''}
+                                </span>
+                                <span className="min-w-0 flex-1 break-words">
+                                  {title}
+                                </span>
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
-              </div>
-            )
-          ) : (
-            blocks
-            .filter((b) => {
-              if (!q) return true
-              const bTitle = b.title.toLowerCase()
-              const hasQ =
-                bTitle.includes(q) ||
-                byBlock(b.id).some(
-                  (t) =>
-                    t.themeId.toLowerCase().includes(q) ||
-                    getThemeTitle(t.themeId).toLowerCase().includes(q),
-                )
-              return hasQ
-            })
-            .map((block) => {
-              const isActive = block.id === activeBlock
-              const open = collapsed[block.id]
-              const blockThemes = byBlock(block.id)
-              const countDone = byBlock(block.id).filter(
-                (t) => progress[t.themeId]?.status === 'done',
-              ).length
-
-              return (
-                <div key={block.id} className="mb-1">
-                  <button
-                    onClick={() =>
-                      setCollapsed((c) => ({ ...c, [block.id]: !c[block.id] }))
-                    }
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent',
-                      isActive && !q ? 'bg-accent text-accent-foreground' : '',
-                    )}
-                  >
-                    {open ? (
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="min-w-0 flex-1 break-words text-left">
-                      {block.order}. {block.title}
-                    </span>
-                    {countDone > 0 && countDone === blockThemes.length ? (
-                      <span className="text-xs text-emerald-500">✓</span>
-                    ) : countDone > 0 ? (
-                      <span className="text-xs text-muted-foreground">
-                        {countDone}/{blockThemes.length}
-                      </span>
-                    ) : null}
-                  </button>
-
-                  {open && (
-                    <div className="ml-4 mt-0.5 space-y-0.5 border-l pl-2">
-                      {blockThemes.map((t) => {
-                        const p = progress[t.themeId]
-                        const done = p?.status === 'done'
-                        const title = getThemeTitle(t.themeId)
-                        const isActiveTheme =
-                          t.themeId === activeTheme && !q
-                        return (
-                          <Link
-                            key={t.themeId}
-                            href={`/themes/${t.path}`}
-                            className={cn(
-                              'flex items-start gap-1 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                              isActiveTheme && 'bg-accent text-accent-foreground',
-                            )}
-                          >
-                            <span className="shrink-0 leading-snug">
-                              {done ? '✅' : p ? '📖' : ''}
-                            </span>
-                            <span className="min-w-0 flex-1 break-words leading-snug">
-                              {title}
-                            </span>
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })
+            </nav>
           )}
-        </nav>
+        </div>
       </ScrollArea>
 
-      <footer className="border-t p-6">
-        <p className="text-xs text-muted-foreground text-center">v {version}</p>
-      </footer>
+      {/* Футер сайдбара */}
+      <div className="border-t p-3 flex items-center gap-2 space-x-2 space-y-2">
+          <div className="text-l font-normal text-muted-foreground">
+              v{version}
+          </div>
+
+          <GitHubButton />
+          <DownloadApkButton />
+      </div>
     </aside>
   )
 }

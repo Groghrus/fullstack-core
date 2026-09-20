@@ -1,1 +1,114 @@
-<!-- stub: DevOps и инфраструктура - ci-cd -->
+---
+id: ci-cd
+block: 12-devops-infrastruktura
+tags: [cicd, github-actions, gitlab-ci, automation, pipelines]
+order: 3
+related: [docker, kubernetes, build-caching]
+difficulty: beginner
+languages: [typescript, go, java]
+status: done
+---
+
+# CI/CD пайплайны (Continuous Integration / Delivery)
+
+CI/CD — это практика автоматизации сборки, тестирования и доставки ПО в продакшн с помощью конвейеров.
+
+## Зачем нужен CI/CD
+
+Ручной деплой ведет к человеческим ошибкам и простоям.
+- **CI:** Автозапуск тестов и линтеров при каждом пуше.
+- **CD:** Автодоставка собранных артефактов на стейджинг и продакшн.
+
+## Как работает CI/CD пайплайн
+
+```mermaid
+flowchart TD
+    A[Git Push] --> B[CI: Lint & Tests]
+    B -->|success| C[Build Docker Image]
+    C -->|success| D[CD: Deploy to K8s]
+    A@{ shape: brace-r, label: "CI/CD Pipeline" }
+```
+
+```mermaid
+sequenceDiagram
+    participant Dev as Разработчик
+    participant Git as GitHub
+    participant Runner as CI Runner
+    participant Prod as Production
+    Dev->>Git: git push
+    Git->>Runner: Запуск workflow
+    Note over Runner: Тесты -> Сборка Docker -> Деплой
+    Runner->>Prod: Обновление версии
+```
+
+## Примеры кода
+
+> Ключевые сценарии: конфигурация пайплайна в GitHub Actions.
+
+### GitHub Actions Workflow (YAML)
+
+```yaml
+name: CI/CD
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci && npm test
+```
+
+## Вопросы
+
+### Q1
+**В чем разница между CI и CD?**
+- [ ] Нет разницы
+- [x] CI отвечает за сборку и тесты, а CD — за доставку на стейджинг или продакшн
+- [ ] CD без тестов
+- [ ] CI только для Java
+
+Пояснение: CI проверяет код, CD доставляет его до пользователя.
+
+### Q2
+**Что такое непрерывный деплой (Continuous Deployment)?**
+- [ ] Медленный процесс
+- [x] Автоматическая отправка в продакшн каждого изменения, прошедшего тесты, без участия человека
+- [ ] Требует одобрения менеджера
+- [ ] Работает ночью
+
+Пояснение: Continuous Deployment не требует ручного одобрения для релиза.
+
+### Q3
+**Зачем нужно кэширование слоев в CI/CD?**
+- [ ] Забить диск
+- [x] Чтобы не/download зависимости заново, ускоряя сборку
+- [ ] Требование GitHub
+- [ ] Шифрование
+
+Пояснение: Кэширование экономит время сборки и ресурсы раннеров.
+
+### Q4
+**Где должны храниться секреты в CI/CD?**
+- [ ] В репозитории
+- [x] В зашифрованном хранилище секретов платформы (GitHub Actions Secrets)
+- [ ] В Telegram
+- [ ] В `/tmp`
+
+Пояснение: Нельзя помещать секреты в открытый код репозитория.
+
+### Q5
+**Что такое артефакт в CI/CD?**
+- [ ] Находка
+- [x] Скомпилированный бинарник или Docker-образ, созданный на этапе сборки
+- [ ] Ошибка линтера
+- [ ] SQL-запрос
+
+Пояснение: Артефакт — это готовый к релизу результат сборки.
+
+## Источники
+
+- GitHub Actions: https://docs.github.com/en/actions
+- Continuous Delivery by Jez Humble

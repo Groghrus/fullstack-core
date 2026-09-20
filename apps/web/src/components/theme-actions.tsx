@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import {useEffect, useState} from 'react';
 import Link from 'next/link'
 import {ArrowLeft, ArrowRight, Bookmark, Check, Circle} from 'lucide-react';
 import { useProgress } from '@/hooks/use-progress'
@@ -21,15 +21,22 @@ export function ThemeActions({
   nextId,
 }: ThemeActionsProps) {
   const { progress, markDone, toggleBookmark, markRead } = useProgress()
+    const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    markRead(themeId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [themeId])
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
-  const p = progress[themeId]
-  const done = p?.status === 'done'
-  const bookmarked = p?.bookmarked
+    useEffect(() => {
+        if (!mounted) return
+
+        markRead(themeId)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mounted, themeId])
+
+    const p = mounted ? progress[themeId] : undefined
+    const done = mounted && p?.status === 'done'
+    const bookmarked = mounted && p?.bookmarked
 
   return (
     <>
