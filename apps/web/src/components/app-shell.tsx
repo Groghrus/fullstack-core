@@ -59,6 +59,7 @@ export function AppShell({ blocks, themes, children }: AppShellProps) {
       {sidebarCollapsed ? (
         <div className="hidden w-14 shrink-0 flex-col items-center gap-2 border-r py-3 lg:flex">
           <Button
+            className="cursor-pointer"
             variant="ghost"
             size="icon"
             aria-label="Показать меню"
@@ -102,11 +103,12 @@ export function AppShell({ blocks, themes, children }: AppShellProps) {
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         {/* Мобильный хедер */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden">
           <div className="flex items-center gap-2">
             <Button
+              className="cursor-pointer"
               variant="ghost"
               size="icon"
               aria-label="Открыть меню"
@@ -131,6 +133,7 @@ export function AppShell({ blocks, themes, children }: AppShellProps) {
               </a>
             </Button>
             <Button
+              className="cursor-pointer"
               variant="ghost"
               size="icon"
               onClick={() => alert('Сборка APK мобильного приложения находится в разработке.')}

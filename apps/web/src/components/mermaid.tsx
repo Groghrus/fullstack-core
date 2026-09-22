@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 
 let initialized = false
+const svgCache = new Map<string, string>()
 
 export function Mermaid({ code, id }: { code: string; id: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -12,6 +13,14 @@ export function Mermaid({ code, id }: { code: string; id: string }) {
 
   useEffect(() => {
     let cancelled = false
+
+    const cached = svgCache.get(code)
+    if (cached) {
+      setSvg(cached)
+      return () => {
+        cancelled = true
+      }
+    }
 
     async function render() {
       if (!initialized) {
@@ -26,7 +35,10 @@ export function Mermaid({ code, id }: { code: string; id: string }) {
       }
       try {
         const { svg: result } = await mermaid.render(`mermaid-${id}`, code)
-        if (!cancelled) setSvg(result)
+        if (!cancelled) {
+          svgCache.set(code, result)
+          setSvg(result)
+        }
       } catch (e) {
         if (!cancelled) setError(String(e))
       }
@@ -45,11 +57,19 @@ export function Mermaid({ code, id }: { code: string; id: string }) {
     )
   }
 
+  if (!svg) {
+    return (
+      <div className="my-4 flex min-h-24 items-center justify-center rounded-lg border bg-card p-3 text-xs text-muted-foreground">
+        Загрузка диаграммы…
+      </div>
+    )
+  }
+
   return (
     <div
       ref={containerRef}
       className="my-4 overflow-auto rounded-lg border bg-card p-3 text-card-foreground dark:[&_.node_text]:!fill-white dark:[&_.edgeLabel_text]:!fill-white [&_.node_text]:!fill-slate-900 [&_.edgeLabel_text]:!fill-slate-800 [&_.node_label]:!text-slate-900 dark:[&_.node_label]:!text-white"
-      dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
+      dangerouslySetInnerHTML={{ __html: svg }}
     />
   )
 }

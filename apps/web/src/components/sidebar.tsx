@@ -141,6 +141,7 @@ export function Sidebar({
           <ThemeProvider />
           {onCollapse && (
             <Button
+              className="cursor-pointer"
               variant="ghost"
               size="icon"
               aria-label="Свернуть меню"
@@ -152,6 +153,7 @@ export function Sidebar({
           )}
           {onClose && (
             <Button
+              className="cursor-pointer"
               variant="ghost"
               size="icon"
               aria-label="Закрыть меню"
