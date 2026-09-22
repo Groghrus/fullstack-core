@@ -1,15 +1,18 @@
 ---
 id: tls
+title: TLS
 block: 11-bezopasnost
 tags: [tls, ssl, encryption, https, certificates]
 order: 5
 related: [encryption-at-rest, encryption-in-transit, security]
 difficulty: beginner
-languages: [typescript, go, java]
+languages: [typescript, go, yaml]
 status: done
 ---
 
 # TLS/SSL и шифрование в транспорте
+
+## Определение
 
 TLS (Transport Layer Security) — это криптографический протокол, обеспечивающий безопасную конфиденциальную и целостную передачу данных по сети.
 
@@ -84,6 +87,48 @@ server:
     key-store: classpath:keystore.p12
     key-store-password: secret
 ```
+
+## Пример использования: интеграция
+
+Отпечаток сертификата, принудительный HTTPS и валидные настройки на сервере:
+
+```ts
+import https from 'node:https'
+import path from 'node:path'
+
+const server = https.createServer({
+  cert: readFileSync(path.join(process.cwd(), 'certs/fullchain.pem')),
+  key: readFileSync(path.join(process.cwd(), 'certs/privkey.pem')),
+}, app)
+
+server.listen(443)
+```
+
+На проде сертификат от Lets Encrypt/сетевого CA, HSTS включён, TLS 1.2+ — слабые версии и небезопасные шифры отключены.
+
+## Паттерны использования
+
+- **Сертификаты от публичного CA + автопродление** — letsencrypt/certbot без ручных операций.
+- **HSTS и принудительный HTTPS** — no plaintext перехода.
+- **TLS 1.2+ и современные cipher suites** — слабые версии отключаются.
+- **Разное шифрование для edge и внутренних сервисов** — mTLS внутри сети при TLS на периметре.
+
+## Антипаттерны и ловушки
+
+- **SSL с устаревшим протоколом** — TLS 1.0/1.1 ломается известными атаками.
+- **Истёкший сертификат без автопродления** — инцидент выше приоритета, чем любой фича.
+- **Протокол перед терминацией на edge** — если трафик внутри открыт — вшиток не шифрует между узлами.
+- **Самоподписанные сертификаты на проде** — экономия на CA, а результат — недоверие и паника.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** весь публичный трафик — HTTPS обязателен; внутренние взаимодействия — желательно, с mTLS для чувствительного.
+- **НЕ использовать:** только для переписки без нагрузки — никаких оправданий для производительности: TLS 1.3 быстрый, а проигрыш в скорости не стоит утечки данных.
+
+## Связанные темы
+
+- **encryption-at-rest** — данные на диске и бэкапы.
+- **encryption-in-transit** — mTLS и шифрование между сервисами.
 
 ## Вопросы
 

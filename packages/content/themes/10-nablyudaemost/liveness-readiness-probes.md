@@ -1,15 +1,18 @@
 ---
 id: liveness-readiness-probes
+title: Liveness- и Readiness-пробы
 block: 10-nablyudaemost
 tags: [kubernetes, k8s, probes, liveness, readiness, startup]
 order: 7
 related: [health-checks, monitoring, operations]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [typescript, go, yaml]
 status: done
 ---
 
 # Liveness и Readiness пробы в K8s
+
+## Определение
 
 В Kubernetes (K8s) пробы (Probes) — это механизмы автоматического контроля состояния контейнеров в поде (Pod). Платформа периодически выполняет проверки, решая, когда перезапустить упавший контейнер (Liveness), а когда временно убрать его из балансировки сервиса (Readiness).
 
@@ -159,6 +162,51 @@ func main() {
 	http.ListenAndServe(":8080", mux)
 }
 ```
+
+## Пример использования: интеграция
+
+Настройка проб в `deployment.yaml`: startup для медленного старта, liveness отвязана от БД, readiness учитывает готовность принимать трафик:
+
+```yaml
+containers:
+  - name: api
+    image: registry/app:1.4.2
+    startupProbe:
+      httpGet: { path: /healthz, port: 8080 }
+      failureThreshold: 30
+      periodSeconds: 5
+    livenessProbe:
+      httpGet: { path: /healthz, port: 8080 }
+      timeoutSeconds: 1
+    readinessProbe:
+      httpGet: { path: /ready, port: 8080 }
+```
+
+Timeout 1 с и короткий период держат пробы дешёвыми; liveness отвечает только за процесс, чтобы при зависшей БД K8s не устраивал каскадные рестарты.
+
+## Паттерны использования
+
+- **Startup-проба для медленных стартов** — JVM/тяжёлые приложения не успевают за дефолтными таймингами.
+- **Liveness реально liveness** — проверяет процесс и порт, а не БД: рестарт при сбое зависимости вреден.
+- **Readiness — критерии готовности** — БД, кэш, warm-up; при падении под уходит из Endpoints без рестарта.
+- **Короткий timeout и период проб** — пробы должны быть почти бесплатными для приложения.
+
+## Антипаттерны и ловушки
+
+- **Liveness, завязанный на БД** — падение БД рестартует поды по кругу (crash-loop).
+- **Слишком низкий failureThreshold без startup-пробы** — медленная инициализация даёт ложные рестарты.
+- **Readiness и liveness указывают на один урл** — различие проверок теряется.
+- **Тяжёлые вычисления в пробе** — каждый тик гоняет стоимость на каждый под кластера.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** все K8s workloads с сетевым портом; обязательно для сервисов с зависимостями.
+- **НЕ использовать:** sidecar'ам без нагрузки (собирающие контейнеры) — пробы выключаются, чтобы не рестартовать бесполезно; фоновым job'ам без порта — им не нужен readiness.
+
+## Связанные темы
+
+- **health-checks** — HTTP-эндпоинты, на которых строятся пробы.
+- **monitoring** — данные для метрик доступности и алертов.
 
 ## Вопросы
 

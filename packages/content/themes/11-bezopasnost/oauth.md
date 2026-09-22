@@ -1,15 +1,18 @@
 ---
 id: oauth
+title: OAuth
 block: 11-bezopasnost
 tags: [oauth, oidc, auth, security, tokens]
 order: 1
 related: [jwt-rotation, iam, secret-management]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # OAuth 2.0 & OIDC (Авторизация и аутентификация)
+
+## Определение
 
 OAuth 2.0 — это открытый стандарт авторизации, позволяющий сторонним приложениям получать ограниченный доступ к защищенным ресурсам пользователя без передачи его учетных данных. OpenID Connect (OIDC) — надстройка над OAuth 2.0, добавляющая стандартизированный слой аутентификации.
 
@@ -172,6 +175,58 @@ public class SecurityConfig {
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Авторизационный код: приложение направляет пользователя на IdP и обменивает код на токены:
+
+```ts
+const state = crypto.randomUUID()
+
+app.get('/login', (_req, res) => {
+  const url = new URL('https://idp.example.com/authorize')
+  url.searchParams.set('response_type', 'code')
+  url.searchParams.set('client_id', CLIENT_ID)
+  url.searchParams.set('redirect_uri', REDIRECT_URI)
+  url.searchParams.set('scope', 'openid profile email')
+  url.searchParams.set('state', state)
+  res.cookie('oauth_state', state, { httpOnly: true })
+  res.redirect(url)
+})
+
+app.get('/callback', async (req, res) => {
+  if (req.cookies.oauth_state !== req.query.state) throw new Error('CSRF in OAuth flow')
+  const tokens = await exchangeCodeForTokens(req.query.code) // POST /token
+  const claims = verifyIdToken(tokens.id_token)             // JWT от IdP
+})
+```
+
+Проверка `state` защищает от подмены callback, а access_token идёт в Authorization header, не в cookie.
+
+## Паттерны использования
+
+- **Authorization Code + PKCE** — кодовая цепочка без хранения секрета клиента на фронте.
+- **id_token для аутентификации, access_token для вызовов API** — не смешивать роли.
+- **Валидация `aud` и `iss` токена** — подделка с другого IdP отвергается.
+- **Короткие токены, длинные refresh** — минимум окна для компрометации.
+
+## Антипаттерны и ловушки
+
+- **Implicit flow (устарел)** — токен в URL и history; современные приложения используют PKCE.
+- **Доверять любому токену IdP** — без проверки подписи и audience сессию подделывают.
+- **Игнорировать `state`/`nonce`** — OAuth flow остаётся уязвим к CSRF и fixation.
+- **Хранить access_token в localStorage** — XSS украдёт его без усилий.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** сторонний вход (Google/GitHub), SSO, сервисы, работающие от имени пользователя (доступ к внешним API).
+- **НЕ использовать:** собственная аутентификация паролем без внешних сервисов — OAuth 2.0 решает проблему доступа третьих сторон, а не все задачи логина.
+
+## Связанные темы
+
+- **jwt-rotation** — как IdP подписывает токены и ротирует ключи подписи.
+- **iam** — что можно делать с удостоверенной личностью внутри системы.
+- **secret-management** — клиентские секреты и ключи подписи.
 
 ## Вопросы
 

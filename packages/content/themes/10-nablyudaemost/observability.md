@@ -1,5 +1,6 @@
 ---
 id: observability
+title: Наблюдаемость (Observability)
 block: 10-nablyudaemost
 tags: [observability, metrics, logs, traces, pillars]
 order: 11
@@ -10,6 +11,8 @@ status: done
 ---
 
 # Концепция Observability (Три кита)
+
+## Определение
 
 Наблюдаемость (Observability) — это свойство системы, позволяющее по ее внешним выходным данным делать исчерпывающие выводы о ее внутренних проблемах и поведении без необходимости развертывания нового кода.
 
@@ -116,6 +119,55 @@ public class ObservabilityService {
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Собираем все три сигнала в одно место — OTel SDK настроен на единый Collector:
+
+```ts
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
+
+const sdk = new NodeSDK({
+  traceExporter: new OTLPTraceExporter({ url: 'http://otel-collector:4318' }),
+  metricReader: new PeriodicExportingMetricReader({
+    exporter: new OTLPMetricExporter({ url: 'http://otel-collector:4318' }),
+  }),
+  instrumentations: [getNodeAutoInstrumentations()],
+})
+await sdk.start()
+```
+
+Метрики, логи и трейсы коррелируются по `traceId` — из всплеска на графике переходишь к логам и конкретному спану.
+
+## Паттерны использования
+
+- **Единый пайплайн OTel** — Collector принимает три сигнала и распределяет их без дублирования агентов.
+- **Корреляция по traceId** — логи и метрики из одного запроса склеиваются со спанами.
+- **Распределение ролей** — метрики для алертов, логи для корневой причины, трейсы для латентности.
+- **Начинать мало** — сначала метрики и логи, трассировку добавлять по мере роста сложности.
+
+## Антипаттерны и ловушки
+
+- **Observability как «добавили дашборды»** — графики без времени ответа и ошибок не отвечают на вопрос «почему?».
+- **Собрать всё и не использовать** — коллекция данных без дашбордов и алертов мертва.
+- **Разрозненные форматы логов** — распарсить нельзя, корреляция невозможна.
+- **Один канал для всех сигналов без контекста** — без traceId метрики/логи/трейсы не связать.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** микросервисы, системы с зависимостями, регулярные инциденты, где нужен ответ «почему и где».
+- **НЕ использовать:** начальный этап прототипа — достаточно мониторинга; наращивать наблюдаемость по мере роста системы, а не впрок.
+
+## Связанные темы
+
+- **monitoring** — фундамент, из которого вырастает наблюдаемость.
+- **logging** — дискретные события как один из трёх сигналов.
+- **distributed-tracing** — сквозной путь запроса для поиска латентности.
+- **metrics** — числа для алертов и SLO.
 
 ## Вопросы
 

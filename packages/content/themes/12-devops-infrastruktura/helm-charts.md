@@ -1,15 +1,18 @@
 ---
 id: helm-charts
+title: Helm Charts
 block: 12-devops-infrastruktura
 tags: [helm, kubernetes, k8s, packaging, charts]
 order: 6
 related: [kubernetes, docker, ci-cd]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [yaml]
 status: done
 ---
 
 # Helm — пакетный менеджер для Kubernetes
+
+## Определение
 
 Helm — пакетный менеджер для Kubernetes, позволяющий устанавливать и обновлять сложные приложения с помощью Chart-пакетов.
 
@@ -58,6 +61,52 @@ spec:
       - name: app
         image: "{{ .Values.image.repo }}:{{ .Values.image.tag }}"
 ```
+
+## Пример использования: интеграция
+
+Шаблонизация по values: один chart, разные окружения:
+
+```yaml
+# values-production.yaml
+replicaCount: 6
+image:
+  repository: registry.example.com/api
+  tag: "1.4.2"
+resources:
+  limits:
+    cpu: 1
+    memory: 512Mi
+ingress:
+  enabled: true
+  hosts: ["api.example.com"]
+```
+
+Один и тот же chart рендерит манифесты для dev/prod; `helm upgrade --install` атомарно обновляет релиз, а `helm rollback` мгновенно возвращает прежнее состояние.
+
+## Паттерны использования
+
+- **Шаблонизация через values.yaml** — код манифестов один, конфигурация за пределами.
+- **Releases и `helm rollback`** — откат неудачного деплоя на прежнюю версию.
+- **Стабильные версии chart** — тег образа и версия chart в одном месте.
+- **Чекы `helm test`** — post-install-проверки готовности релиза.
+
+## Антипаттерны и ловушки
+
+- **Хардкод значений в chart** — chart перестаёт быть переиспользуемым между окружениями.
+- **Версии без фиксации** — latest в values съедает воспроизводимость деплоя.
+- **Ручное применение raw-манифестов вместо helm** — теряется история и rollback.
+- **Правила без валидации** — опечатка в template даёт невалидный YAML в кластере.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** K8s-приложения со сложной конфигурацией и несколькими окружениями; когда нужен откат деплоя.
+- **НЕ использовать:** пара простых манифестов без изменений от окружения — helm-обвязка дороже, чем kustomize/raw YAML; серверless и не-K8s цели.
+
+## Связанные темы
+
+- **kubernetes** — оркестратор, для которого упаковываются charts.
+- **docker** — образы, которые chart'ы разворачивают.
+- **ci-cd** — пайплайн, который публикует версии chart'ов.
 
 ## Вопросы
 
