@@ -65,6 +65,7 @@
   "websockets": "WebSockets",
   "long-polling": "Long Polling",
   "server-sent-events": "Server-Sent Events",
+  "web": "Веб и браузер (Web Platform)",
 
   "api-versioning": "Версионирование API",
   "semantic-versioning": "Семантическое версионирование",
@@ -83,6 +84,7 @@
   "sql-injection": "SQL-инъекции",
   "xss": "XSS",
   "ssrf": "SSRF",
+  "security": "Безопасность приложений (AppSec)",
 
   "docker": "Docker",
   "kubernetes": "Kubernetes",
@@ -91,6 +93,7 @@
   "terraform": "Terraform",
   "helm-charts": "Helm Charts",
   "build-caching": "Кэширование сборки",
+  "operations": "Эксплуатация и Ops-практики",
 
   "monitoring": "Мониторинг",
   "logging": "Логирование",

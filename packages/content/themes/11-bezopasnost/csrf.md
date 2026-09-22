@@ -189,4 +189,4 @@ Cookie с `SameSite=Strict/Lax` блокирует отправку в крос�
 ## Источники
 
 - OWASP CSRF: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-- MDN - SameSite cookies: https://developer.mozilla.org/
+- MDN - SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesitevalue

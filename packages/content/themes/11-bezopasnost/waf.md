@@ -198,5 +198,5 @@ app.use((req, res, next) => {
 
 ## Источники
 
-- OWASP WAF Guide: https://owasp.org/
-- Cloudflare WAF: https://cloudflare.com/
+- OWASP WAF Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Web_Application_Firewall_Cheat_Sheet.html
+- Cloudflare WAF: https://developers.cloudflare.com/waf/
