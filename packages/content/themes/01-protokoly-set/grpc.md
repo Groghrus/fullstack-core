@@ -27,7 +27,7 @@ status: done
 
 - **Строгий контракт** — `.proto` описывает сервис и типы; кодогенерация даёт типизированные stubs на всех языках — нет «playground» REST-документации.
 - **Эффективность** — бинарная сериализация protobuf компактнее и быстрее JSON; HTTP/2 даёт мультиплексирование (один канал на много запросов/потоков).
-- **Стриминг** — unary, server-streaming, client-streaming, bidi-streaming из коробки — удобно для чатов, логов, feed, больших данных.
+- **Стриминг** — unary, server-streaming, client-streaming, bidi-streaming из коробки — удобно для чатов, логов, лент событий, больших данных.
 - **Идеален для микросервисов** — Множество языков (Go, Java, TS, ...), deadlines, metadata, интерцепторы, балансировка — готовый «внутренний API».
 - **Cross-language** — один `.proto`, генераторы для всех платформ: TS/Go/Java согласуются автоматически.
 
@@ -49,7 +49,7 @@ sequenceDiagram
 2. **Кодогенерация** — `protoc`/buf генерирует: сообщения-классы, stub клиента и каркас сервера. Методы и типы типизированы.
 3. **Транспорт HTTP/2** — каждый RPC — `stream` (поток) на HTTP/2-соединении; путь вида `/{package}.{Service}/{Method}`. Мультиплексирование — несколько RPC параллельно на одном канале.
 4. **Сериализация protobuf** — компактный бинарный формат (тег-значение), быстрее JSON, требует схемы.
-5. **Каналы и deadlines** — `Channel` = соединение со стекингом; каждый вызов — с `deadline` (аналог таймаута, см. Timeouts), `metadata` (header'ы: токен, trace-id), interceptors (аналог middlewares).
+5. **Каналы и deadlines** — `Channel` = логическое соединение с переиспользованием; каждый вызов — с `deadline` (аналог таймаута, см. Timeouts), `metadata` (header'ы: токен, trace-id), interceptors (аналог middlewares).
 
 **Четыре модели gRPC:**
 
@@ -121,7 +121,12 @@ stream.on('data', (update: OrderUpdate) => console.log(update.status))
 ```go
 import (
 	"context"
+	"io"
+	"time"
+
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	pb "orders/gen" // сгенерированный из orders.proto
 )
 
@@ -267,7 +272,7 @@ Order o = stub.createOrder(...);
 - **«Chatty RPC»** — слишком много диалоговых вызовов по 1 полю: деградация из-за сериализации и сети; батчить (см. API design).
 - **Блокирующий stub в реактивном стеке** — blocking-вызовы в event-loop быстро убивают параллельность — нужны async/stream stubs.
 - **gRPC как «лёгкий REST» для публичных клиентов** — браузеры требуют gRPC-Web/connect; для веба удобнее REST/OpenAPI + SSE.
-- **Безнадзорные версии** — изменения `.proto` без майоринга ломают клиентов (см. API versioning).
+- **Бесконтрольные версии схемы** — изменения `.proto` без минорного/мажорного версионирования ломают клиентов (см. API versioning).
 - **Не логировать код статусов** — теряется диагностика `DEADLINE_EXCEEDED` vs `UNAVAILABLE`.
 
 ## Когда использовать / когда НЕ использовать
@@ -275,7 +280,7 @@ Order o = stub.createOrder(...);
 **Использовать:**
 - Внутренние сервисы (микросервисы, backend-to-backend): типизированный контракт, стриминг, скорость.
 - Многоязычные команды (один `.proto` → TS/Go/Java стабы).
-- Сценарии со стримами: события, чаты, feed, биржевые данные, прогресс-бары, загрузки.
+- Сценарии со стримами: события, чаты, ленты, биржевые данные, прогресс-бары, загрузки.
 - Мобильные/нативные клиенты (gRPC-клиент хорошо поддерживается) — когда нужен быстрый коннект.
 
 **НЕ использовать (или с осторожностью):**
@@ -286,7 +291,7 @@ Order o = stub.createOrder(...);
 
 ## Связанные темы
 
-- **HTTP/2 and HTTP/3** — gRPC транспорт: HTTP/2, мультиплексирование, бинарные кадры; QUIC-потенциал обсуждается.
+- **HTTP/2 и HTTP/3** — gRPC транспорт: HTTP/2, мультиплексирование, бинарные кадры; QUIC-потенциал обсуждается.
 - **API design / Versioning** — `.proto` и эволюция схем (см. Semantic versioning, API versioning).
 - **DNS / Service Discovery** — резолверы и headless-сервисы для gRPC-балансировки.
 - **Timeouts / Retries / Circuit Breakers** — дедлайны, retry-политики, защита клиента от упавшего сервиса.
@@ -320,7 +325,7 @@ Order o = stub.createOrder(...);
 - [ ] Push, poll, long-poll
 - [ ] REST и SOAP
 
-Пояснение: четыре модели: unary (1↔1), server-strem (1→N), client-stream (N→1), bidi (N↔N).
+Пояснение: четыре модели: unary (1↔1), server-streaming (1→N), client-streaming (N→1), bidi (N↔N).
 
 ### Q4
 **Почему deadline в gRPC-вызове обязателен?**
@@ -345,6 +350,6 @@ Order o = stub.createOrder(...);
 - gRPC — What is gRPC: https://grpc.io/docs/what-is-grpc/
 - gRPC — Core concepts (модели, каналы, дедлайны): https://grpc.io/docs/what-is-grpc/core-concepts/
 - Protocol Buffers — язык и генерация: https://protobuf.dev/
-- gRPC Go — настроика каналов и retry: https://grpc.io/docs/languages/go/
+- gRPC Go — настройка каналов и retry: https://grpc.io/docs/languages/go/
 - gRPC Java — basics tutorial: https://grpc.io/docs/languages/java/basics/
 - gRPC-Web / Connect: https://connectrpc.com/

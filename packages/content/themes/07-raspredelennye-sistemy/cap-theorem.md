@@ -48,7 +48,7 @@ status: done
 flowchart TD
     A[Распределённая система] --> B{Сетевое разделение?}
     B -->|да| C{Выбор}
-    C -->|CP| D[Согласованные данные, но часть запросов отказы]
+    C -->|CP| D[Согласованные данные, но часть запросов — отказ]
     C -->|AP| E[Отвечает всегда, но данные могут быть устаревшими]
     B -->|нет| F[Пытаемся обеспечить и С, и A]
     A@{ shape: brace-r, label: "CAP - про момент разрыва сети" }
@@ -135,13 +135,14 @@ export const policies = {
 
 ```go
 var strongOps = map[string]bool{"balance_write": true}
-// Сильные операции требуют кворума, остальные - декthe-кворум.
+// Сильные операции требуют кворума, остальные - деградированный кворум (AP).
 ```
 
 ### Java (настройка консистентности Cassandra)
 
 ```java
 // CP-чтение: consistency level QUORUM в Cassandra.
+String id = "user-123";
 CqlSession s = CqlSession.builder().build();
 ResultSet rs = s.execute(SimpleStatement
     .builder("select * from k.users where id=:id")
@@ -154,7 +155,7 @@ ResultSet rs = s.execute(SimpleStatement
 
 - **Определить тип данных** — для каждого домена решить strong vs eventual (PACELC).
 - **Кворумы** — большинство узлов для строгой согласованности, доступности регулируется.
-- **Мониторить partition** — if net split произошёл, знать поведение заранее.
+- **Мониторить partition** — если произошёл split сети, знать поведение заранее.
 - **Отказ по функциональности** — при разделении деградировать по-фичам (recommendations stale, но баланс - CP).
 - **Резерв по месту** — симметричные дата-центры для consistent масштабирования.
 
@@ -238,7 +239,7 @@ ResultSet rs = s.execute(SimpleStatement
 
 ## Источники
 
-- Brewer's CAP Theorem (обе статьи Гилберта и Линча): https://www.infoq.com/articles/cap-twelve-years-later-how-cap-rui
+- Brewer's CAP Theorem ("CAP Twelve Years Later: How the Rules Have Changed"): https://www.infoq.com/articles/cap-twelve-years-later-how-cap-rules-changed/
 - CAP Theorem (Martin Kleppmann) - блог: https://martin.kleppmann.com/2015/05/11/please-stop-calling-databases-cp-or-ap.html
 - DynamoDB whitepaper - trade-offs: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-choosing-consistency.html
 - PACELC: https://en.wikipedia.org/wiki/PACELC_theorem

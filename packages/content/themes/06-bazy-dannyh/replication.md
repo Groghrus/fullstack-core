@@ -37,11 +37,11 @@ status: done
 - **Синхронная репликация** — коммит подтверждается после применения на реплике: no-loss, но latency растёт.
 - **Асинхронная репликация** — primary коммитит, не дожидаясь реплики: быстрее, но при внезапном сбое primary последние изменения могут потеряться.
 - **Replication lag** — отставание реплики от primary (асинхронная схема): вплоть до N секунд.
-- **Failover** — при падении primary одна из реплик повышается до лидера; «эксборы» переключаются.
-- **Multi-node topologies** — chain (primary → A → B), star (primary → N реплик), (rare) written ack.
-- **Формат журнала** — Postgres: WAL (write-ahead log), MySQL: binlog; логический (row-based streaming) расчёт на сборку.
+- **Failover** — при падении primary одна из реплик повышается до лидера; клиенты переключаются.
+- **Multi-node topologies** — chain (primary → A → B), star (primary → N реплик), вариант с синхронным ack-подтверждением записи.
+- **Формат журнала** — Postgres: WAL (write-ahead log), MySQL: binlog; логический (row-based) журнал — для streaming-подписчиков (CDC).
 
-Соглашение: репликация даёт **eventual consistency** для asynkного случая; строгая синхронность связана с latency и доступностью (см. CAP Theorem).
+Соглашение: репликация даёт **eventual consistency** для асинхронного случая; строгая синхронность связана с latency и доступностью (см. CAP Theorem).
 
 ```mermaid
 flowchart TD
@@ -65,7 +65,7 @@ sequenceDiagram
     P->>R: send WAL segment (репликация)
     R->>R: применить изменения
     Note over R: replication lag - пока WAL не применён, старые данные
-    A->>R: SELECT orders (может быть отстали)
+    A->>R: SELECT orders (данные могут быть устаревшими)
 ```
 
 ## Примеры кода
@@ -105,7 +105,7 @@ export async function replicationLag(pool: Pool): Promise<number> {
 ### Go (проверка синхронности для критичного чтения)
 
 ```go
-// Стабильно: при критичном «сильном» чтении (деньги, пароль)
+// Правило: при критичном «сильном» чтении (деньги, пароль)
 // идти на primary, а не на реплику.
 func (q *Querier) CriticalRead(ctx context.Context, userID int64) (*User, error) {
 	var u User
@@ -123,13 +123,13 @@ func (q *Querier) CriticalRead(ctx context.Context, userID int64) (*User, error)
 ```java
 // Failover: Spring Boot + Postgres
 // spring.datasource.hikari.initialization-fail-timeout=-1
-// автоматика Free Swiss/паттернов:
+// типовые паттерны failover:
 //
 // 1) health-check: реплика жива?
-// 2) если primary недоступен - переключаемся на реплику (script/ЛB)
+// 2) если primary недоступен - переключаемся на реплику (script/LB)
 // 3) после стабилизации primary - переключить обратно
 //
-// Главное: правильно выбрать timeout/liverness (см. Health Checks)
+// Главное: правильно выбрать timeout/liveness (см. Health Checks)
 ```
 
 ## Пример использования: интеграция
@@ -155,7 +155,7 @@ export async function withFailover<T>(
   try {
     return await write()
   } catch (e) {
-    // реплика может быть повышена до primary повышение (failover).
+    // реплика может быть повышена до primary (failover).
     // после failover URL writer меняется (из конфиг/consul).
     const fallback = await promoteUpgradeIfNeeded()
     if (fallback) {
@@ -215,7 +215,7 @@ public class DataSourceConfig {
 ## Когда использовать / когда НЕ использовать
 
 **Использовать:**
-- Сервисы с необходимостью ОТК и DR (production, база данных).
+- Сервисы с необходимостью отказоустойчивости и DR (production, база данных).
 - Read-heavy приложения, где реплики разгружают primary.
 
 **НЕ использовать (или пересмотреть):**
@@ -252,7 +252,7 @@ public class DataSourceConfig {
 - [ ] Медленнее из-за синхронизации
 - [ ] Требует нескольких primary
 
-Пояснение: async-репликация даёт скорость и задержку реплик (lag), но не гарантирует durable durability на реплике в момент сбоя.
+Пояснение: async-репликация даёт скорость и задержку реплик (lag), но не гарантирует durable-запись на реплике в момент сбоя primary.
 
 ### Q3
 **Что такое replication lag?**

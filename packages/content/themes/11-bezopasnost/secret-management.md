@@ -62,15 +62,31 @@ package main
 
 import (
 	"context"
+	"fmt"
+
 	vault "github.com/hashicorp/vault/api"
 )
 
-func getSecret() error {
+func readDBPassword(addr, token string) (string, error) {
 	config := vault.DefaultConfig()
-	client, _ := vault.NewClient(config)
-	client.SetToken("token")
-	_, err := client.Logical().ReadWithContext(context.Background(), "secret/data/db")
-	return err
+	config.Address = addr
+	client, err := vault.NewClient(config)
+	if err != nil {
+		return "", err
+	}
+	// токен выдаётся Vault при входе приложения (в Kubernetes — по JWT пода)
+	client.SetToken(token)
+
+	secret, err := client.Logical().ReadWithContext(context.Background(), "secret/data/db")
+	if err != nil {
+		return "", err
+	}
+	data, ok := secret.Data["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("secret data missing")
+	}
+	password, _ := data["password"].(string)
+	return password, nil
 }
 ```
 
@@ -119,13 +135,13 @@ public class VaultLoader {
 Пояснение: AWS Secrets Manager предоставляет хранение и ротацию кредов.
 
 ### Q4
-**Что такое шифрование в покое (Encryption at Rest)?**
-- [ ] Шифрование сети
-- [x] Шифрование данных при их хранении на дисках и в базах данных
-- [ ] Выключение серверов
-- [ ] Удаление логов
+**Чем динамический секрет Vault отличается от статического в конфиге?**
+- [ ] Ничем
+- [x] Динамический создаётся под конкретную задачу с коротким сроком жизни и автоматически отзывается
+- [ ] Статический шифрует сетевое соединение
+- [ ] Динамический нельзя использовать для БД
 
-Пояснение: Защищает данные на диске при физической краже носителя.
+Пояснение: динамические секреты живут ровно столько, сколько нужно задаче — нет долгоживущих паролей.
 
 ### Q5
 **Что делать при случайном пуше боевого пароля в GitHub?**

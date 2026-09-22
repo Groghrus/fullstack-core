@@ -36,7 +36,7 @@ sequenceDiagram
     participant Histogram as HDRHistogram (память)
     Client->>API: Запрос 1..N
     API->>Histogram: Запись времени ответа (latency)
-    Note over Histogram: Накопление распределения:<br/>P50 = 12ms<br/>P95 = 45ms<br/>P99 = 180ms<br/>P99.9 = 850ms
+    Note over Histogram: Накопление распределения (P50=12ms, P95=45ms, P99=180ms, P99.9=850ms)
     API-->>Client: Ответ
 ```
 
@@ -176,6 +176,6 @@ public class MetricsService {
 
 ## Источники
 
-- Google SRE Book - Eliminating Tail Latency: https://sre.google/sre-book/handling-overload/
+- Google SRE Book - Handling Overload (latency, tail): https://sre.google/sre-book/handling-overload/
 - HDRHistogram GitHub: https://github.com/HdrHistogram/HdrHistogram
 - The Tail at Scale (Dean & Barroso, Stanford): https://cacm.acm.org/magazines/2013/2/160173-the-tail-at-scale/fulltext

@@ -82,21 +82,48 @@ func main() {
 }
 ```
 
-### Java (Spring Boot RestTemplate mTLS)
+### Java (Spring Boot RestTemplate с mTLS)
 
 ```java
 package com.example.demo;
 
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.security.KeyStore;
 
 @Configuration
 public class MtlsConfig {
+
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
+    public RestTemplate restTemplate() throws Exception {
+        // клиентский сертификат (p12) — как раз то, что сервер проверяет в mTLS
+        char[] password = "changeit".toCharArray();
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        try (InputStream in = new FileInputStream("client.p12")) {
+            ks.load(in, password);
+        }
+        KeyManagerFactory kmf =
+            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(ks, password);
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        // trust managers (null) — системные CA: сервер тоже проверяется по сертификату
+        sslContext.init(kmf.getKeyManagers(), null, null);
+
+        CloseableHttpClient httpClient =
+            HttpClients.custom().setSSLContext(sslContext).build();
+        HttpComponentsClientHttpRequestFactory factory =
+            new HttpComponentsClientHttpRequestFactory(httpClient);
+        return new RestTemplate(factory);
     }
 }
 ```

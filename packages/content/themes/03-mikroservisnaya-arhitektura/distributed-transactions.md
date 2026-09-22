@@ -92,11 +92,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class TransferService {
 
+    // два XA-источника данных (БД1, БД2) скоординированы одним
+    // JTA/XA-менеджером (Atomikos). Без него @Transactional —
+    // только локальная транзакция одного источника данных
     @Transactional
     public void transfer(long fromId, long toId, int amount) {
-        // обе БД управляются одним UserTransaction-менеджером (XA)
-        accountDao.debit(fromId, amount);
-        accountDao.credit(toId, amount);
+        accountDao.debit(fromId, amount);   // БД1
+        accountDao.credit(toId, amount);    // БД2
         // commit/rollback обоих источников данных атомарно (2PC)
     }
 }
@@ -199,7 +201,7 @@ async function createOrder(deps: Deps, order: Order) {
 }
 ```
 
-### Go (outbox-relayer горутина с ретраями)
+### Go (outbox-relayer горутина, ретраи через sent_at)
 
 ```go
 func relayLoop(ctx context.Context, db *sql.DB, publish func(Event) error) {
@@ -233,13 +235,13 @@ func relayLoop(ctx context.Context, db *sql.DB, publish func(Event) error) {
 - **Recovery log у координатора** — чтобы не «зависнуть» на полпути.
 - **Идемпотентные операции на приёме** — повторная доставка/компенсация не дублирует.
 - **Saga для длинных процессов** — блокировки не держим (см. Saga).
-- **Watch несогласованность** — eventual consistency контролировать метриками/шлюзами сверки.
+- **Контроль несогласованности** — eventual consistency контролировать метриками/шлюзами сверки.
 
 ## Антипаттерны и ловушки
 
 - **2PC на всех распределённых операциях** — дорого, долгое блокирование, падение под нагрузкой.
 - **Координатор без recovery log** — сервис упал → вечная «неопределённость» участников.
-- **Неисидемпотентные потребители** — повтор события = двойной эффект.
+- **Неидемпотентные потребители** — повтор события = двойной эффект.
 - **Outbox + отдельная очередь без транзакции** — событие отправлено, а данные не сохранены (или наоборот).
 - **Игнорирование network partitions** — 2PC в partition зависает (см. CAP/Network Partitions).
 - **Saga вместо единственной транзакции** — злоупотребление компенсациями при возможной простой БД.
@@ -316,6 +318,6 @@ func relayLoop(ctx context.Context, db *sql.DB, publish func(Event) error) {
 
 - Microsoft — Distributed transactions / 2PC и альтернативы: https://learn.microsoft.com/en-us/azure/architecture/patterns
 - Chris Richardson — Outbox Pattern (Transactional Outbox): https://microservices.io/patterns/data/transactional-outbox.html
-- Midu — Saga Pattern comparisons (orchestration vs choreography)
+- Chris Richardson — Saga Pattern / discover: https://microservices.io/patterns/data/saga.html
 - Enterprise Integration Patterns (G. Hohpe) — обработка распределённых транзакций
 - PostgreSQL — Two-Phase Commit: https://www.postgresql.org/docs/current/two-phase.html

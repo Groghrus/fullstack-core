@@ -55,26 +55,43 @@ sequenceDiagram
 
 ```typescript
 import express, { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { GetPublicKeyOrSecret } from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 
 const app = express();
-const JWT_SECRET = 'secret';
 
 interface AuthRequest extends Request {
   user?: any;
 }
+
+// Resource Server проверяет подпись токена публичным ключом (RS256)
+// авторизационного сервера, который он получает из JWKS
+const client = jwksClient({
+  jwksUri: 'https://auth.example.com/.well-known/jwks.json',
+});
+
+const getJwksKey: GetPublicKeyOrSecret = (header, callback) => {
+  client.getSigningKey(header.kid!, (err, key) => {
+    if (err) return callback(err);
+    callback(null, key?.getPublicKey());
+  });
+};
 
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing token' });
   }
-  try {
-    req.user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    next();
-  } catch (err) {
-    return res.status(403).json({ error: 'Invalid token' });
-  }
+  jwt.verify(
+    authHeader.split(' ')[1],
+    getJwksKey,
+    { algorithms: ['RS256'] },
+    (err, decoded) => {
+      if (err) return res.status(403).json({ error: 'Invalid token' });
+      req.user = decoded;
+      next();
+    },
+  );
 }
 
 app.get('/api/protected', requireAuth, (req: AuthRequest, res: Response) => {
@@ -88,13 +105,28 @@ app.get('/api/protected', requireAuth, (req: AuthRequest, res: Response) => {
 package main
 
 import (
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/MicahParks/keyfunc"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("secret")
+const jwksURL = "https://auth.example.com/.well-known/jwks.json"
+
+// Проверка токена по ключам авторизационного сервера (JWKS, RS256)
+func tokenValid(tokenStr string) bool {
+	jwtKeyfunc, err := keyfunc.Get(jwksURL, keyfunc.Options{RefreshInterval: time.Hour})
+	if err != nil {
+		return false
+	}
+	defer jwtKeyfunc.End()
+
+	_, err = jwt.Parse(tokenStr, jwtKeyfunc.Keyfunc, jwt.WithValidMethods([]string{"RS256"}))
+	return err == nil
+}
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,10 +136,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-		if err != nil || !token.Valid {
+		if !tokenValid(tokenStr) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -119,7 +148,7 @@ func main() {
 	http.HandleFunc("/api/protected", AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	}))
-	http.ListenAndServe(":8080", nil)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 

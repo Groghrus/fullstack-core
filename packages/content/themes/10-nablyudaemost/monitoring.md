@@ -37,7 +37,8 @@ sequenceDiagram
     participant Alert as Alertmanager
     loop Каждые 15 секунд
         Mon->>App: HTTP GET /metrics
-        App-->>Mon: # TYPE http_requests_total counter<br/>http_requests_total{status="200"} 15420
+        App-->>Mon: # TYPE http_requests_total counter
+        Note over App: http_requests_total{status="200"} 15420
     end
     Note over Mon: Обнаружен рост ошибок 5xx > 5%
     Mon->>Alert: Отправка алерта в пейджер

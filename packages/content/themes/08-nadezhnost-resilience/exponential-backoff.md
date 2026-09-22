@@ -50,7 +50,7 @@ sequenceDiagram
 
 Формула роста паузы (для `attempt` от 0):
 
-```
+```text
 delay = min(baseDelay × factor^attempt, maxDelay)
 ```
 
@@ -144,6 +144,9 @@ func backoffDelay(attempt int, base, maxCap time.Duration, factor float64) time.
 
 func withBackoff[T any](fn func() (T, error), attempts int) (T, error) {
 	var zero T
+	if attempts <= 0 {
+		return zero, errors.New("attempts must be > 0")
+	}
 	const base = 200 * time.Millisecond
 	const maxCap = 5 * time.Second
 
@@ -159,7 +162,7 @@ func withBackoff[T any](fn func() (T, error), attempts int) (T, error) {
 		jitter := time.Duration(rand.Int63n(int64(delay / 2)))
 		time.Sleep(delay + jitter)
 	}
-	return zero, nil
+	return zero, errors.New("exponential backoff: attempts exhausted")
 }
 ```
 

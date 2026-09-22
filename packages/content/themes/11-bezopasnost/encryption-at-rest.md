@@ -47,13 +47,13 @@ sequenceDiagram
 ```typescript
 import crypto from 'crypto';
 const key = crypto.randomBytes(32);
-const iv = crypto.randomBytes(16);
 
 function encrypt(text: string) {
+  const iv = crypto.randomBytes(12); // 96 бит — стандарт для GCM
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let enc = cipher.update(text, 'utf8', 'hex');
   enc += cipher.final('hex');
-  return { enc, tag: cipher.getAuthTag().toString('hex') };
+  return { iv: iv.toString('hex'), enc, tag: cipher.getAuthTag().toString('hex') };
 }
 ```
 
@@ -65,12 +65,24 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 )
 
 func Encrypt(plain, key []byte) ([]byte, error) {
-	block, _ := aes.NewCipher(key)
-	gcm, _ := cipher.NewGCM(block)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	// nonce должен быть случайным и уникальным для каждого шифрования
 	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	// возвращаем nonce + ciphertext (nonce нужен для расшифровки)
 	return gcm.Seal(nonce, nonce, plain, nil), nil
 }
 ```

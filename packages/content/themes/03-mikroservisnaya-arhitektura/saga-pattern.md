@@ -119,14 +119,14 @@ const orderSaga = [
 package saga
 
 type Step struct {
-	Name run func(ctx context.Context, sagaID string) error
+	Run  func(ctx context.Context, sagaID string) error
 	Undo func(ctx context.Context, sagaID string) error
 }
 
 func Execute(ctx context.Context, sagaID string, steps []Step) error {
 	done := []Step{}
 	for _, s := range steps {
-		if err := s.Name(ctx, sagaID); err != nil {
+		if err := s.Run(ctx, sagaID); err != nil {
 			for i := len(done) - 1; i >= 0; i-- {
 				// компенсация прошлых шагов; сама по себе идемпотентна по sagaID
 				_ = done[i].Undo(ctx, sagaID)
@@ -249,7 +249,7 @@ public void paymentStep(SagaRequest req) {
 **НЕ использовать (или с осторожностью):**
 - Когда возможна одна локальная ACID-транзакция (один сервис, одна БД).
 - Для высоких гарантий согласованности в среднем (некоторые данные могут требовать 2PC/строгих блокировок) — подумать о компромиссе.
-- Если шаги не имеют компенсаций вовсе (нельзя откатить физически, e.g., отправка SMS) — сага должна знать границы «необратимого».
+- Если шаги не имеют компенсаций вовсе (нельзя откатить физически, например, отправка SMS) — сага должна знать границы «необратимого».
 
 ## Связанные темы
 
@@ -314,4 +314,3 @@ public void paymentStep(SagaRequest req) {
 - Microsoft — Saga distributed transactions pattern: https://learn.microsoft.com/en-us/azure/architecture/reference-architectures/saga/saga
 - AWS — Managing distributed transactions (Saga, Orchestration/Choreography): https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/implement-the-saga-pattern.html
 - Eventuate Tram (реализация саги): https://eventuate.io
-- Kent Weare — Saga orchestration vs choreography (разбор на примере)

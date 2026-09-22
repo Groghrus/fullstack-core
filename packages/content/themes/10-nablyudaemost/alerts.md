@@ -44,9 +44,9 @@ sequenceDiagram
 
 ## Примеры кода
 
-> Ключевые сценарии: конфигурация алертов в Prometheus Alerting Rules в TypeScript, Go и Java.
+> Ключевые сценарии: конфигурация алертов в Prometheus Alerting Rules в YAML, Go и Java.
 
-### TypeScript (Prometheus Alert Rule YAML)
+### Prometheus Alert Rule (YAML)
 
 ```yaml
 groups:
@@ -54,12 +54,12 @@ groups:
     rules:
       - alert: HighErrorRate
         expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
-        for: 2m
+        for: 5m
         labels:
           severity: critical
         annotations:
           summary: "High HTTP error rate detected on {{ $labels.instance }}"
-          description: "Error rate is above 5% for the last 2 minutes."
+          description: "Error rate is above 5% for the last 5 minutes."
 ```
 
 ### Go (Alert check helper)

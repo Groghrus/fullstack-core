@@ -88,7 +88,11 @@ import java.io.IOException;
 public class WafFilter implements Filter {
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) req;
-        if (request.getQueryString() != null && request.getQueryString().contains("DROP TABLE")) {
+        String qs = request.getQueryString();
+        if (qs != null && qs.toLowerCase().contains("drop table")) {
+            res.setStatus(403);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"error\":\"Blocked by WAF\"}");
             return;
         }
         chain.doFilter(req, res);

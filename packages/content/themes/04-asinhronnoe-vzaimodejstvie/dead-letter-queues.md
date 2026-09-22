@@ -357,4 +357,4 @@ public class DlqConfig {
 - AWS SQS — Dead-letter queues: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
 - Azure Service Bus — Dead-letter: https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-dead-letter-queues
 - Spring AMQP — Retry and DLQ: https://docs.spring.io/spring-amqp/docs/current/reference/html/#async-annotated-messaging
-- Martin Fowler — Poison message patterns
+- Martin Fowler — Poison message patterns: https://martinfowler.com/articles/patterns-of-distributed-systems/

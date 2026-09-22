@@ -16,7 +16,8 @@ SSRF — уязвимость, при которой приложение отп
 ## Зачем нужна защита от SSRF
 
 В облачной архитектуре SSRF позволяет сканировать внутренний контур сети и красть метаданные облака.
-- **Кража метаданных AWS:** Запрос к `http://169.254.169.254/` позволяет выкрасть временные IAM-креды администратора.
+- **Кража метаданных AWS:** Запрос к `http://169.254.169.254/` позволяет выкрасть временные IAM-креды инстанса (роль EC2).
+- **IMDSv2** — доступ к метаданным по PUT-токену усложняет эксплуатацию, но не заменяет сетевую фильтрацию исходящих запросов (egress).
 
 ## Как работает SSRF-атака
 
@@ -51,11 +52,16 @@ import dns from 'dns/promises';
 async function safeFetch(rawUrl: string) {
   const parsed = new URL(rawUrl);
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid protocol');
-  
+
+  // DNS-резолвинг перед запросом — защита от DNS Rebinding
   const ips = await dns.resolve4(parsed.hostname);
-  for (const ip of ips) {
-    if (ip.startsWith('10.') || ip.startsWith('127.')) throw new Error('Private IP blocked');
-  }
+  const isPrivate = (ip: string) =>
+    ip.startsWith('10.') ||
+    ip.startsWith('127.') ||
+    ip.startsWith('169.254.') ||
+    ip.startsWith('192.168.') ||
+    ip.startsWith('172.');
+  if (ips.some(isPrivate)) throw new Error('Private/link-local IP blocked');
 }
 ```
 
@@ -72,9 +78,9 @@ import (
 
 func IsSafeURL(rawURL string) error {
 	parsed, _ := url.Parse(rawURL)
-	ips, _ := net.LookupIP(parsed.Hostname())
+	ips, _ := net.LookupIP(parsed.Hostname()) // резолвим заранее — защита от DNS Rebinding
 	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
 			return errors.New("forbidden internal IP")
 		}
 	}
@@ -93,8 +99,11 @@ import java.net.InetAddress;
 public class SsrfValidator {
     public static boolean isAllowed(String urlString) throws Exception {
         URI uri = URI.create(urlString);
+        // резолвим до запроса — защита от DNS Rebinding
         InetAddress addr = InetAddress.getByName(uri.getHost());
-        return !addr.isLoopbackAddress() && !addr.isSiteLocalAddress();
+        return !addr.isLoopbackAddress()
+            && !addr.isSiteLocalAddress()
+            && !addr.isLinkLocalAddress();
     }
 }
 ```

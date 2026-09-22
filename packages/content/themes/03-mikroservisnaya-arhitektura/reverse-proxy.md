@@ -50,7 +50,7 @@ sequenceDiagram
     C->>P: GET /app/images/logo.png
     P->>P: TLS terminate, проверить кэш
     alt кэш пуст
-        P->>B2: GET /also-app/logo.png (upstream)
+        P->>B2: GET /app/images/logo.png (upstream)
         B2-->>P: 200 logo.png + cache-control
         P-->>C: 200 + logo (кэширует)
     else кэш свежий
@@ -73,7 +73,7 @@ flowchart LR
 
 ## Примеры кода
 
-> Сценарии: **конфиг nginx**, **прокси-сервер на Go**, **client-side через прокси**.
+> Сценарии: **конфиг nginx**, **прокси-сервер на Go**, **проксирование на Java (Spring)**.
 
 ### nginx (конфиг: TLS + балансировка + ws upgrade)
 
@@ -118,6 +118,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 func main() {
@@ -128,11 +129,11 @@ func main() {
 	proxy.Director = func(r *http.Request) {
 		r.URL.Scheme = backend.Scheme
 		r.URL.Host = backend.Host
-		r.URL.Path = "/" + r.URL.Path // пример переписывания
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/app") // /app/x → /x
 		r.Host = backend.Host
 	}
 
-	log.Fatal(http.ListenAndServe(":443", proxy))
+	log.Fatal(http.ListenAndServeTLS(":443", "cert.pem", "key.pem", proxy))
 }
 ```
 
@@ -142,6 +143,7 @@ func main() {
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 public class ProxyController {
@@ -269,9 +271,9 @@ spring:
 
 ## Связанные темы
 
-- **API Gateway** — бизнес-шлюз поверх reverse proxy (agregation, auth, версии).
+- **API Gateway** — бизнес-шлюз поверх reverse proxy (агрегация, auth, версии).
 - **Load Balancing** — upstream-логика балансировки внутри прокси/шлюза.
-- **TLS** — терminiation и ротация сертификатов на прокси.
+- **TLS** — терминация и ротация сертификатов на прокси.
 - **HTTP/2 и HTTP/3** — производительность и мультиплексирование на периметре.
 - **WebSockets / Server-Sent Events** — проброс streaming через прокси (upgrade, buffering).
 - **Caching / Edge Caching** — кэш на прокси/CDN.
@@ -280,7 +282,7 @@ spring:
 ## Вопросы
 
 ### Q1
-**Для чего служит прямой reverse proxy?**
+**Для чего служит reverse proxy?**
 - [ ] Для прямой отправки запросов в интернет
 - [ ] Для аналитики клиентов
 - [x] Принимает запросы снаружи и пересылает внутренним серверам, скрывая их топологию
@@ -290,7 +292,7 @@ spring:
 
 ### Q2
 **Что делает «TLS-termination»?**
-- [x] Завершает TLS-шифрование в одной точке (прокси), дальше — внутренний HTTP/2 (protected сеть)
+- [x] Завершает TLS-шифрование в одной точке (прокси), дальше — трафик во внутренней сети
 - [ ] Увеличивает длину ключей
 - [ ] Проверяет срок сертификатов у клиентов
 - [ ] Убирает TLS вовсе

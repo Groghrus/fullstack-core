@@ -19,11 +19,11 @@ Autoscaling — автоматическое изменение количест
 - **Экономия ресурсов:** Меньше экземпляров при низкой нагрузке.
 - **Доступность:** Больше экземпляров при пиковых нагрузках.
 
-## Как работает Autoscaling архитектура
+## Как работает Autoscaling
 
 ```mermaid
 flowchart TD
-    A[Нагрузка растёт] --> B[Метрики CPU/RPS]
+    A[Нагрузка растёт] --> B[Метрики CPU/память]
     B --> C[HPA решает]
     C -->|масштабировать| D[Добавить реплики]
     C -->|снижать| E[Удалить реплики]
@@ -118,5 +118,5 @@ spec:
 
 ## Источники
 
-- Kubernetes HPA Docs: https://kubernetes.io/docs/
-- Cloud Native Patterns
+- Kubernetes — Horizontal Pod Autoscaler: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+- HPA walkthrough (CPU example): https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/

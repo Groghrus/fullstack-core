@@ -103,7 +103,7 @@ public class SliCalculator {
 ### Q2
 **Какой из следующих примеров лучше всего подходит в качестве хорошего SLI для веб-приложения?**
 - [ ] Процент использования дискового пространства
-- [x] Доля HTTP-запросов, выполненных быстрее 200 мс без учета ошибок 5xx
+- [x] Доля HTTP-запросов, выполненных быстрее 200 мс
 - [ ] Количество закоммиченных строк в день
 - [ ] Температура процессора
 
@@ -138,5 +138,5 @@ public class SliCalculator {
 
 ## Источники
 
-- Google SRE Book - Defining SLIs: https://sre.google/sre-book/service-level-objectives/
-- Alex Hidalgo — Implementing Service Level Objectives
+- Google SRE Book - Service Level Objectives: https://sre.google/sre-book/service-level-objectives/
+- Alex Hidalgo — Implementing Service Level Objectives: https://www.oreilly.com/library/view/implementing-service-level/9781492076803/

@@ -19,7 +19,7 @@ Rollback — это процесс возврата приложения к пр
 - **Быстрое восстановление:** Возврат к рабочей версии снижает ущерб.
 - **Защита пользователей:** Пользователи снова получают стабильную версию.
 
-## Как работают Rollbacks архитектура
+## Как работают Rollbacks
 
 ```mermaid
 flowchart TD
@@ -39,7 +39,7 @@ sequenceDiagram
     App->>Metrics: Метрики новой версии
     Metrics-->>Alert: Ошибки выше порога
     Alert->>Ops: Уведомление
-    Ops->>App: Rollback к последней версии
+    Ops->>App: Rollback к предыдущей стабильной версии
 ```
 
 ## Примеры кода
@@ -101,5 +101,5 @@ kubectl rollout undo deployment/my-app
 
 ## Источники
 
-- Kubernetes Rollback Docs: https://kubernetes.io/docs/
-- Google SRE Book
+- Kubernetes — Rolling Update / Rollback: https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/
+- Google SRE Book — управление релизами: https://sre.google/sre-book/
