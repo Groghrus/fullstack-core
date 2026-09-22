@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Menu, PanelLeftOpen, Download } from 'lucide-react'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
-import { useProgress } from '@/hooks/use-progress'
 import { Sidebar } from './sidebar'
 import { Button } from '@/components/ui/button'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -19,7 +18,6 @@ interface AppShellProps {
 
 export function AppShell({ blocks, themes, children }: AppShellProps) {
   const pathname = usePathname()
-  const { progress } = useProgress()
   const [menuOpen, setMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
