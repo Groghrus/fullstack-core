@@ -9,7 +9,7 @@
 ```
 apps/
   web/        Next.js-приложение (тренажёр, учебник, quiz)
-  mobile/     React Native (Expo) — запланировано
+  mobile/     React Native (Expo) — офлайн-читалка контента
 packages/
   content/    Материалы по темам (Markdown + mermaid + quiz)
   config/     Общие типы и конфигурация
@@ -21,7 +21,7 @@ doc/          Документация проекта
 - TypeScript
 - Next.js (App Router)
 - Content Layer / MDX для статического контента
-- React Native (Expo) — позже
+- React Native (Expo) — офлайн-читалка той же библиотеки контента
 - Прогресс/закладки — localStorage (личное приложение, БД не нужна)
 
 ## Контент
@@ -34,3 +34,21 @@ doc/          Документация проекта
 npm install
 npm run dev        # запуск веб-тренажёра
 ```
+
+## Мобильное приложение (Expo)
+
+Офлайн-читалка: контент и mermaid-диаграммы конвертируются в TS-бандл **на машине разработчика**, поэтому на устройство/веб не нужен интернет и сервер.
+
+```bash
+# 1. Перегенерировать контент (md + registry + titles + mermaid→SVG)
+npm run bundle:content -w mobile
+
+# 2. Запуск
+cd apps/mobile
+npx expo start                  # dev-сервер + QR для Expo Go
+npx expo start --web            # то же, но открыть можно в браузере (localhost:8081)
+```
+
+- **Real-устройство**: установи **Expo Go**, телефон и ПК в одной сети → отсканируй QR из терминала `expo start`. Если не видит сеть, подними туннель по USB: `adb reverse tcp:8081 tcp:8081`, затем в Expo Go → *Enter URL manually* → `exp://localhost:8081`.
+- **Браузер**: `npx expo start --web` → открой `http://localhost:8081`. Диаграммы рендерятся через `dangerouslySetInnerHTML` (native — через `react-native-webview`).
+- **Сборка APK**: `npx expo prebuild` → `cd android && ./gradlew assembleRelease` (нужен Android SDK + JDK).
