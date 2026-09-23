@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { WebView } from 'react-native-webview'
+import { palette } from '../lib/palette'
+import { useTheme } from '../lib/theme'
 
 function parseViewBox(svg: string): { w: number; h: number } | null {
   const m = svg.match(/viewBox="(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)"/)
@@ -9,6 +11,8 @@ function parseViewBox(svg: string): { w: number; h: number } | null {
 }
 
 export function Diagram({ svg }: { svg: string }) {
+  const { dark } = useTheme()
+  const c = palette(dark)
   const { width } = useWindowDimensions()
   const inner = Math.min(width - 36, 900)
 
@@ -31,14 +35,14 @@ export function Diagram({ svg }: { svg: string }) {
 
   if (Platform.OS === 'web') {
     return (
-      <View style={styles.wrap}>
+      <View style={[styles.wrap, { backgroundColor: c.card, borderColor: c.border }]}>
         <div dangerouslySetInnerHTML={{ __html: svg }} />
       </View>
     )
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { backgroundColor: c.card, borderColor: c.border }]}>
       <WebView
         originWhitelist={['*']}
         source={{ html }}
@@ -55,11 +59,9 @@ export function Diagram({ svg }: { svg: string }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginVertical: 10,
+    marginVertical: 12,
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#1e293b',
-    backgroundColor: '#0f172a',
   },
 })

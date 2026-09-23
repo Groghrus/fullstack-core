@@ -1,27 +1,21 @@
-import { Link, Stack, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { contentRegistry, contentTitles, themes } from '../../src/generated/content'
-import { loadProgress } from '../../src/lib/progress'
+import { palette } from '../../src/lib/palette'
+import { useProgress } from '../../src/lib/progress'
+import { useTheme } from '../../src/lib/theme'
+import { Badge } from '../../src/components/ui/Badge'
+import { Card, CardContent } from '../../src/components/ui/Card'
+import { ArrowLeftIcon, BookmarkIcon, CheckIcon } from '../../src/components/icons'
 
 export default function BlockScreen() {
   const { block } = useLocalSearchParams<{ block: string }>()
-  const scheme = useColorScheme()
-  const dark = scheme === 'dark'
-  const [done, setDone] = useState<Set<string>>(new Set())
+  const router = useRouter()
+  const { dark } = useTheme()
+  const c = palette(dark)
+  const { progress } = useProgress()
 
   const blockMeta = contentRegistry.blocks.find((b) => b.id === block)
-
-  useEffect(() => {
-    loadProgress().then((p) => setDone(new Set(p)))
-  }, [])
 
   if (!blockMeta) {
     return <Text style={styles.missing}>Блок не найден</Text>
@@ -30,76 +24,132 @@ export default function BlockScreen() {
   const items = blockMeta.themes
     .map((themeId) => ({
       themeId,
-      title:
-        themes[themeId]?.title ||
-        contentTitles[themeId] ||
-        themeId,
+      title: themes[themeId]?.title || contentTitles[themeId] || themeId,
     }))
     .filter((t) => themes[t.themeId])
 
   return (
     <>
       <Stack.Screen options={{ title: blockMeta.title }} />
-      <FlatList
-        data={items}
-        keyExtractor={(t) => t.themeId}
+      <ScrollView
         contentContainerStyle={styles.root}
-        renderItem={({ item, index }) => {
-          const isDone = done.has(item.themeId)
-          return (
-            <Link href={`/${block}/${item.themeId}`} asChild>
-              <TouchableOpacity
-                style={StyleSheet.flatten([
-                  styles.card,
-                  dark && styles.darkCard,
-                ])}
+        showsVerticalScrollIndicator={false}
+      >
+        <Pressable
+          onPress={() => router.push('/')}
+          style={styles.backLink}
+          hitSlop={8}
+        >
+          <ArrowLeftIcon color={c.mutedForeground} size={15} />
+          <Text style={[styles.backText, { color: c.mutedForeground }]}>
+            Каталог
+          </Text>
+        </Pressable>
+
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <Badge variant="outline">Блок {blockMeta.order}</Badge>
+            <Text style={[styles.headerCount, { color: c.mutedForeground }]}>
+              {items.length} тем
+            </Text>
+          </View>
+          <Text style={[styles.title, { color: c.foreground }]}>
+            {blockMeta.title}
+          </Text>
+        </View>
+
+        <View style={styles.list}>
+          {items.map((item) => {
+            const p = progress[item.themeId]
+            const done = p?.status === 'done'
+            const started = !!p && !done
+            return (
+              <Pressable
+                key={item.themeId}
+                onPress={() => router.push(`/${block}/${item.themeId}`)}
               >
-                <Text style={styles.order}>{index + 1}</Text>
-                <View style={styles.body}>
-                  <View style={styles.titleRow}>
-                    <Text
-                      style={[styles.title, dark && styles.darkText]}
-                      numberOfLines={2}
-                    >
-                      {item.title}
-                    </Text>
-                    {isDone && (
-                      <Text style={styles.doneBadge}>✓ прочитано</Text>
+                <Card style={styles.themeCard}>
+                  <CardContent style={styles.themeCardContent}>
+                    <View style={[styles.iconBox, { borderColor: c.border, backgroundColor: c.muted }]}>
+                      {done ? (
+                        <CheckIcon color={c.successFg} size={15} />
+                      ) : started ? (
+                        <BookmarkIcon color={c.foreground} size={14} />
+                      ) : (
+                        <Text style={{ color: c.mutedForeground, fontSize: 15 }}>
+                          •
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.themeBody}>
+                      <Text style={[styles.themeTitle, { color: c.foreground }]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                    </View>
+                    {done ? (
+                      <Badge variant="success" style={styles.themeBadge}>
+                        ✓
+                      </Badge>
+                    ) : started ? (
+                      <Badge variant="secondary" style={styles.themeBadge}>
+                        открыто
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" style={styles.themeBadge}>
+                        новое
+                      </Badge>
                     )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </Link>
-          )
-        }}
-      />
+                  </CardContent>
+                </Card>
+              </Pressable>
+            )
+          })}
+        </View>
+
+        <Text style={[styles.footnote, { color: c.mutedForeground }]}>
+          Навигация также доступна через сайдбар слева.
+        </Text>
+      </ScrollView>
     </>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 16, paddingBottom: 40 },
+  root: { padding: 16, paddingBottom: 56 },
   missing: { padding: 20, color: '#64748b' },
-  card: {
+  backLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
-    padding: 14,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 24,
   },
-  darkCard: { borderColor: '#1e293b', backgroundColor: '#0d1526' },
-  order: { fontSize: 15, fontWeight: '700', color: '#64748b', width: 24 },
-  body: { flex: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontSize: 15, fontWeight: '500', color: '#0f172a', flex: 1 },
-  darkText: { color: '#e2e8f0' },
-  doneBadge: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '600',
+  backText: { fontSize: 14 },
+  header: { marginBottom: 32 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  headerCount: { fontSize: 14 },
+  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  list: { gap: 8 },
+  themeCard: {},
+  themeCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeBody: { flex: 1, minWidth: 0 },
+  themeTitle: { fontSize: 15, fontWeight: '500' },
+  themeBadge: { flexShrink: 0 },
+  footnote: {
+    fontSize: 14,
+    marginTop: 32,
+    textAlign: 'center',
   },
 })

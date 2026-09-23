@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { JSDOM } from 'jsdom'
+import { codeToTokens } from 'shiki'
 
 const MONOREPO_ROOT = path.resolve(import.meta.dirname, '../../..')
 const THEMES_ROOT = path.join(MONOREPO_ROOT, 'packages', 'content', 'themes')
@@ -31,7 +32,7 @@ dom.window.SVGElement.prototype.getBBox = function () {
 const mermaid = (await import('mermaid')).default
 
 globalThis.btoa = (s) => Buffer.from(s, 'utf8').toString('base64')
-globalThis.atob = (s) => Buffer.from(s, 'base64').toString('utf8')
+globalThis.atob = (s) => Buffer.from(s, 'base64').toString('latin1')
 
 mermaid.initialize({
   startOnLoad: false,
@@ -126,6 +127,59 @@ function stripFirstHeading(body) {
   return body.replace(/^\s*#\s+.*(?:\r?\n|$)/, '')
 }
 
+const FENCE_RE = /```(\w+)\s*\n([\s\S]*?)```/g
+
+/** Хеш для поиска подсветки кода (djb2) — должен совпадать с реализацией в app. */
+function codeHash(lang, code) {
+  let h = 5381
+  const s = lang + '\n' + code
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0
+  return h
+}
+
+/** Извлекает fenced-блоки кода из markdown-портации и подсвечивает их (Shiki, github-dark). */
+let highlightWarned = false
+async function highlightCode(mdContent) {
+  const hits = []
+  let m
+  const re = new RegExp(FENCE_RE.source, 'g')
+  while ((m = re.exec(mdContent)) !== null) {
+    const lang = m[1].toLowerCase()
+    const code = m[2]
+    let tokens = null
+    try {
+      const r = await codeToTokens(code, { lang, theme: 'github-dark' })
+      tokens = r.tokens.map((line) =>
+        line.map((t) => [t.content, t.color]),
+      )
+    } catch (e) {
+      if (!highlightWarned) {
+        highlightWarned = true
+        console.log('FIRST CODE TOKENS ERROR:', String(e).slice(0, 400))
+      }
+      tokens = null
+    }
+    hits.push({ key: codeHash(lang, code), tokens })
+  }
+  return hits
+}
+
+/** Извлекает читаемый текст из markdown (для оффлайн-поиска): без frontmatter, кода, служебных символов. */
+function extractText(md) {
+  let s = md
+  s = s.replace(/^---\r?\n[\s\S]*?\r?\n---/, ' ')
+  s = s.replace(/```[\s\S]*?```/g, ' ')
+  s = s.replace(/`[^`]*`/g, ' ')
+  s = s.replace(/^#{1,6}\s+/gm, '')
+  s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+  s = s.replace(/<[^>]+>/g, ' ')
+  s = s.replace(/[*_~]{1,3}/g, ' ')
+  s = s.replace(/^\s{0,3}>\s?/gm, '')
+  s = s.replace(/^\s{0,3}(?:[-*]|\d+\.)\s+/gm, '')
+  s = s.replace(/[|]/g, ' ')
+  return s.replace(/\s+/g, ' ').trim()
+}
+
 async function renderDiagram(code, index) {
   const { svg } = await mermaid.render(`diagram-${index}-${Date.now()}`, code)
   return svg
@@ -152,6 +206,7 @@ async function main() {
 
       const diagrams = []
       const unitMeta = []
+      const codeHits = []
       for (const u of units) {
         if (u.type === 'diagram') {
           try {
@@ -168,8 +223,14 @@ async function main() {
             unitMeta.push({ type: 'diagram', id: null, error: String(e).slice(0, 200) })
           }
         } else {
+          codeHits.push(...(await highlightCode(u.content)))
           unitMeta.push({ type: 'md', content: u.content })
         }
+      }
+
+      const codeBlocks = {}
+      for (const h of codeHits) {
+        if (!(h.key in codeBlocks)) codeBlocks[h.key] = h.tokens
       }
 
       const quizData = parseQuiz(quiz, themeId)
@@ -177,8 +238,10 @@ async function main() {
         blockId,
         frontmatter,
         title: frontmatter.title || titles[themeId] || themeId,
+        searchText: extractText(raw),
         units: unitMeta,
         diagrams,
+        codeBlocks,
         quiz: quizData,
       }
       stats.files++
@@ -200,12 +263,16 @@ export type Unit =
   | { type: 'md'; content: string }
   | { type: 'diagram'; id: string }
   | { type: 'diagram-error'; error: string }
+export type CodeLine = [string, string | null][]
+export type CodeBlock = CodeLine[] | null
 export interface ThemeData {
   blockId: string
   title: string
   frontmatter: Record<string, string>
+  searchText: string
   units: Unit[]
   diagrams: Diagram[]
+  codeBlocks: Record<string, CodeBlock>
   quiz: QuizQuestion[]
 }
 export const contentRegistry = ${JSON.stringify(registry, null, 2)} as const

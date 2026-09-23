@@ -1,6 +1,10 @@
-import { StyleSheet, Text, View, useColorScheme } from 'react-native'
-import Markdown, { MarkdownIt } from 'react-native-markdown-display'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import Markdown, { MarkdownIt, type RenderRules, type ASTNode } from 'react-native-markdown-display'
+import { palette } from '../lib/palette'
+import { useTheme } from '../lib/theme'
+import type { CodeBlock } from '../generated/content'
+import { ChevronRightIcon } from './icons'
 
 const md = new MarkdownIt({
   html: false,
@@ -8,73 +12,199 @@ const md = new MarkdownIt({
   typographer: true,
 })
 
-export function MarkdownView({ source }: { source: string }) {
-  const scheme = useColorScheme()
-  const dark = scheme === 'dark'
+/** Хеш для поиска подсветки кода (djb2) — совпадает с content-bundle.mjs. */
+function codeHash(lang: string, code: string): number {
+  let h = 5381
+  const s = lang + '\n' + code
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0
+  return h
+}
+
+type Unit =
+  | { type: 'block'; content: string }
+  | { type: 'sub'; heading: string; content: string }
+
+function splitSubsections(source: string): Unit[] {
+  const lines = source.split('\n')
+  const units: Unit[] = []
+  let block: string[] = []
+  let sub: { heading: string; body: string[] } | null = null
+  let inFence = false
+
+  const flushBlock = () => {
+    if (block.length) {
+      units.push({ type: 'block', content: block.join('\n') })
+      block = []
+    }
+  }
+  const flushSub = () => {
+    if (sub) {
+      units.push({ type: 'sub', heading: sub.heading, content: sub.body.join('\n') })
+      sub = null
+    }
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trimStart()
+    if (trimmed.startsWith('```')) inFence = !inFence
+
+    if (!inFence) {
+      const m = /^(#{1,3})\s+(.*)$/.exec(trimmed)
+      if (m) {
+        if (m[1].length === 3) {
+          flushBlock()
+          flushSub()
+          sub = { heading: m[2], body: [] }
+          continue
+        }
+        flushBlock()
+        flushSub()
+        block = [line]
+        continue
+      }
+    }
+
+    if (sub) sub.body.push(line)
+    else block.push(line)
+  }
+  flushBlock()
+  flushSub()
+  return units.filter((u) => (u.type === 'block' ? u.content.trim() !== '' : true))
+}
+
+function CollapsibleSub({
+  heading,
+  content,
+  codeBlocks,
+}: {
+  heading: string
+  content: string
+  codeBlocks?: Record<string, CodeBlock>
+}) {
+  const { dark } = useTheme()
+  const c = palette(dark)
+  const [open, setOpen] = useState(false)
+
+  return (
+    <View style={[styles.subWrap, { borderColor: c.border, backgroundColor: c.card }]}>
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        style={styles.subSummary}
+        aria-expanded={open}
+      >
+        <Text style={[styles.subHeading, { color: c.foreground }]} numberOfLines={2}>
+          {heading}
+        </Text>
+        <View style={{ transform: [{ rotate: open ? '90deg' : '0deg' }] }}>
+          <ChevronRightIcon color={c.mutedForeground} size={16} />
+        </View>
+      </Pressable>
+      {open && (
+        <View style={[styles.subBody, { borderTopColor: c.border }]}>
+          <MarkdownBody source={content} codeBlocks={codeBlocks} />
+        </View>
+      )}
+    </View>
+  )
+}
+
+type FenceNode = ASTNode & { sourceInfo?: string }
+
+function MarkdownBody({
+  source,
+  codeBlocks,
+}: {
+  source: string
+  codeBlocks?: Record<string, CodeBlock>
+}) {
+  const { dark } = useTheme()
+  const c = palette(dark)
+
+  const rules = useMemo<RenderRules>(
+    () => ({
+      fence: (node: ASTNode, _ch, _parent, styles) => {
+        const fence = node as FenceNode
+        const lang = (fence.sourceInfo ?? '').trim().split(/\s+/)[0]
+        const key = codeHash(lang, node.content)
+        const tokens = codeBlocks?.[key]
+        return <HighlightedCode key={node.key} code={node.content} lang={lang} tokens={tokens} />
+      },
+    }),
+    [codeBlocks],
+  )
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         body: {
-          color: dark ? '#e2e8f0' : '#1e293b',
+          color: c.foreground,
           fontSize: 15,
-          lineHeight: 23,
+          lineHeight: 24,
         },
         heading1: {
-          color: dark ? '#f8fafc' : '#0f172a',
-          fontSize: 26,
+          color: c.foreground,
+          fontSize: 28,
           fontWeight: '700',
-          marginTop: 20,
+          letterSpacing: -0.5,
+          marginTop: 0,
           marginBottom: 10,
+          borderBottomWidth: 1,
+          borderBottomColor: c.border,
+          paddingBottom: 8,
         },
         heading2: {
-          color: dark ? '#f1f5f9' : '#0f172a',
-          fontSize: 21,
-          fontWeight: '700',
-          marginTop: 24,
+          color: c.foreground,
+          fontSize: 23,
+          fontWeight: '600',
+          letterSpacing: -0.3,
+          marginTop: 40,
           marginBottom: 8,
+          borderBottomWidth: 1,
+          borderBottomColor: c.border,
+          paddingBottom: 8,
         },
         heading3: {
-          color: dark ? '#e2e8f0' : '#1e293b',
-          fontSize: 18,
+          color: c.foreground,
+          fontSize: 20,
           fontWeight: '600',
-          marginTop: 18,
+          letterSpacing: -0.3,
+          marginTop: 32,
           marginBottom: 6,
         },
         heading4: {
-          color: dark ? '#e2e8f0' : '#1e293b',
-          fontSize: 16,
+          color: c.foreground,
+          fontSize: 18,
           fontWeight: '600',
-          marginTop: 14,
+          marginTop: 24,
           marginBottom: 4,
         },
         paragraph: {
-          color: dark ? '#e2e8f0' : '#1e293b',
+          color: c.foreground,
           fontSize: 15,
-          lineHeight: 23,
+          lineHeight: 24,
           marginTop: 8,
           marginBottom: 8,
         },
         strong: {
           fontWeight: '700',
-          color: dark ? '#f8fafc' : '#0f172a',
+          color: c.foreground,
         },
         em: { fontStyle: 'italic' },
         s: { textDecorationLine: 'line-through' },
-        link: { color: '#3b82f6' },
+        link: { color: c.primary, textDecorationLine: 'underline' },
         blockquote: {
           borderLeftWidth: 3,
-          borderLeftColor: dark ? '#475569' : '#cbd5e1',
+          borderLeftColor: c.mutedForeground,
           paddingLeft: 12,
-          backgroundColor: dark ? '#1e293b' : '#f1f5f9',
+          backgroundColor: c.muted,
           paddingVertical: 8,
           paddingRight: 8,
           borderRadius: 6,
-          marginVertical: 8,
+          marginVertical: 12,
         },
         code_inline: {
-          backgroundColor: dark ? '#0f172a' : '#e2e8f0',
-          color: dark ? '#93c5fd' : '#1d4ed8',
+          backgroundColor: c.muted,
+          color: c.foreground,
           fontFamily: 'monospace',
           fontSize: 13,
           paddingHorizontal: 5,
@@ -82,63 +212,183 @@ export function MarkdownView({ source }: { source: string }) {
           borderRadius: 4,
         },
         code_block: {
-          backgroundColor: dark ? '#0f172a' : '#1e293b',
+          backgroundColor: c.card,
           padding: 12,
           borderRadius: 8,
-          marginVertical: 8,
+          marginVertical: 12,
           fontFamily: 'monospace',
           fontSize: 12.5,
           lineHeight: 18,
-          color: dark ? '#cbd5e1' : '#e2e8f0',
+          color: c.mutedForeground,
+          borderWidth: 1,
+          borderColor: c.border,
         },
         fence: {
-          backgroundColor: dark ? '#0f172a' : '#1e293b',
+          backgroundColor: c.card,
           padding: 12,
           borderRadius: 8,
-          marginVertical: 8,
+          marginVertical: 12,
           fontFamily: 'monospace',
           fontSize: 12.5,
           lineHeight: 18,
-          color: dark ? '#cbd5e1' : '#e2e8f0',
+          color: c.mutedForeground,
+          borderWidth: 1,
+          borderColor: c.border,
         },
         table: {
           borderWidth: 1,
-          borderColor: dark ? '#334155' : '#cbd5e1',
+          borderColor: c.border,
           borderRadius: 6,
-          marginVertical: 8,
-        },
-        tr: {
-          borderBottomWidth: 1,
-          borderBottomColor: dark ? '#334155' : '#e2e8f0',
+          marginVertical: 16,
         },
         th: {
           padding: 8,
-          backgroundColor: dark ? '#1e293b' : '#f1f5f9',
-          color: dark ? '#f1f5f9' : '#0f172a',
+          backgroundColor: c.muted,
+          color: c.foreground,
           fontWeight: '600',
+          fontSize: 14,
         },
         td: {
           padding: 8,
-          color: dark ? '#e2e8f0' : '#1e293b',
+          color: c.foreground,
+          fontSize: 14,
+          borderWidth: 1,
+          borderColor: c.border,
         },
-        bullet_list: { marginVertical: 4 },
-        ordered_list: { marginVertical: 4 },
+        bullet_list: { marginVertical: 8, marginLeft: 4 },
+        ordered_list: { marginVertical: 8, marginLeft: 4 },
         list_item: {
-          marginVertical: 3,
-          color: dark ? '#e2e8f0' : '#1e293b',
+          marginVertical: 4,
+          color: c.foreground,
+          flexDirection: 'row',
         },
         hr: {
-          marginVertical: 16,
-          backgroundColor: dark ? '#334155' : '#e2e8f0',
+          marginVertical: 24,
+          backgroundColor: c.border,
           height: 1,
         },
       }),
-    [dark],
+    [c],
   )
 
   return (
-    <Markdown style={styles} markdownit={md}>
+    <Markdown style={styles} markdownit={md} rules={rules}>
       {`${source}\n`}
     </Markdown>
   )
 }
+
+function HighlightedCode({
+  code,
+  lang,
+  tokens,
+}: {
+  code: string
+  lang: string
+  tokens: CodeBlock | undefined
+}) {
+  const { dark } = useTheme()
+  const c = palette(dark)
+
+  if (!tokens || tokens.length === 0) {
+    return (
+      <View style={[styles.codeBlock, { backgroundColor: c.codeBg, borderColor: c.border }]}>
+        {lang ? (
+          <Text style={[styles.codeLang, { color: c.mutedForeground }]}>{lang}</Text>
+        ) : null}
+        <Text style={[styles.codeText, { color: c.foreground }]}>
+          {code.replace(/\n$/, '')}
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <View style={[styles.codeBlock, { backgroundColor: c.codeBg, borderColor: c.border }]}>
+      {lang ? (
+        <Text style={[styles.codeLang, { color: c.mutedForeground }]}>{lang}</Text>
+      ) : null}
+      {tokens.map((line, i) => (
+        <Text key={i} style={styles.codeLine}>
+          {line.map(([text, color], j) => (
+            <Text key={j} style={color ? { color } : undefined}>
+              {text}
+            </Text>
+          ))}
+        </Text>
+      ))}
+    </View>
+  )
+}
+
+export function MarkdownView({
+  source,
+  codeBlocks,
+}: {
+  source: string
+  codeBlocks?: Record<string, CodeBlock>
+}) {
+  const units = useMemo(() => splitSubsections(source), [source])
+
+  return (
+    <View>
+      {units.map((u, i) =>
+        u.type === 'sub' ? (
+          <View key={i} style={styles.unitWrap}>
+            <CollapsibleSub heading={u.heading} content={u.content} codeBlocks={codeBlocks} />
+          </View>
+        ) : (
+          <View key={i}>
+            <MarkdownBody source={u.content} codeBlocks={codeBlocks} />
+          </View>
+        ),
+      )}
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  subWrap: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  codeBlock: {
+    marginVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+    overflow: 'hidden',
+  },
+  codeLang: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    marginBottom: 6,
+    letterSpacing: 0.4,
+  },
+  codeLine: {
+    fontFamily: 'monospace',
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  codeText: {
+    fontFamily: 'monospace',
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  subSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  subHeading: { fontSize: 16, fontWeight: '600', flex: 1 },
+  subBody: {
+    borderTopWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  unitWrap: { marginVertical: 6 },
+})
