@@ -1,5 +1,6 @@
 ---
 id: encryption-in-transit
+title: Шифрование данных при передаче
 block: 11-bezopasnost
 tags: [encryption, in-transit, tls, http2, security]
 order: 7
@@ -10,6 +11,8 @@ status: done
 ---
 
 # Шифрование при передаче (Encryption in Transit)
+
+## Определение
 
 Шифрование при передаче защищает данные во время их перемещения по сетям (между клиентом и сервером, между микросервисами).
 
@@ -82,24 +85,90 @@ func main() {
 }
 ```
 
-### Java (Spring Boot RestTemplate mTLS)
+### Java (Spring Boot RestTemplate с mTLS)
 
 ```java
 package com.example.demo;
 
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.security.KeyStore;
 
 @Configuration
 public class MtlsConfig {
+
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder.build();
+    public RestTemplate restTemplate() throws Exception {
+        // клиентский сертификат (p12) — как раз то, что сервер проверяет в mTLS
+        char[] password = "changeit".toCharArray();
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        try (InputStream in = new FileInputStream("client.p12")) {
+            ks.load(in, password);
+        }
+        KeyManagerFactory kmf =
+            KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(ks, password);
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        // trust managers (null) — системные CA: сервер тоже проверяется по сертификату
+        sslContext.init(kmf.getKeyManagers(), null, null);
+
+        CloseableHttpClient httpClient =
+            HttpClients.custom().setSSLContext(sslContext).build();
+        HttpComponentsClientHttpRequestFactory factory =
+            new HttpComponentsClientHttpRequestFactory(httpClient);
+        return new RestTemplate(factory);
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Обязательный HTTPS и переадресация HTTP → HTTPS на входе приложения:
+
+```ts
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(`https://${req.hostname}${req.originalUrl}`)
+  }
+  next()
+})
+```
+
+За балансировщиком TLS терминируется на edge, внутрь сервисы дополнительно закрываются mTLS — трафик в сети не защищён «по умолчанию» ни в одном сегменте.
+
+## Паттерны использования
+
+- **TLS везде, включая внутренние сервисы** — внутренняя сеть не гарантирует безопасность.
+- **mTLS для zero trust** — mutual TLS с истоками из сертификатов: и клиент, и сервер проверяются.
+- **HSTS** — браузеру запрещается HTTP после первого HTTPS-ответа.
+- **Валидация сертификатов везде** — включая внешние зависимости и SDK клиенты.
+
+## Антипаттерны и ловушки
+
+- **TLS только на edge** — внутри сети данные идут открытым текстом, компрометация одного узла снимает ВСЁ.
+- **Верификация отключена в тестах** — проскакивает в прод как `rejectUnauthorized: false`.
+- **Забыть про HSTS** — первый HTTP-запрос остаётся перехватываемым.
+- **Сертификаты с истекшими сроками** — паника в проде; mTLS self-signed без контроля CA — мимышка.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** всегда для сетевых взаимодействий; mTLS — для чувствительных внутренних сервисов.
+- **НЕ использовать:** для данных, чувствительность которых нулевая — тем не менее HTTPS для публичного web обязателен вне зависимости.
+
+## Связанные темы
+
+- **encryption-at-rest** — защита данных на диске.
+- **tls** — механизм шифрования при передаче и управление сертификатами.
 
 ## Вопросы
 

@@ -59,11 +59,14 @@ export default function Home() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         {blocks.map((block) => (
-          <Link key={block.id} href={`/blocks/${block.id}`} className="block">
+          <Link key={block.id} href={`/blocks/${block.id}`} className="block min-w-0">
             <Card className="h-full transition-colors hover:border-primary hover:bg-accent/50">
               <CardContent className="p-4">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <span className="truncate text-sm font-semibold" title={block.title}>
+                  <span
+                    className="min-w-0 flex-1 truncate text-sm font-semibold"
+                    title={block.title}
+                  >
                     {block.order}. {block.title}
                   </span>
                   <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">

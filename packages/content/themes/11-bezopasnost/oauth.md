@@ -1,15 +1,18 @@
 ---
 id: oauth
+title: OAuth
 block: 11-bezopasnost
 tags: [oauth, oidc, auth, security, tokens]
 order: 1
 related: [jwt-rotation, iam, secret-management]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # OAuth 2.0 & OIDC (Авторизация и аутентификация)
+
+## Определение
 
 OAuth 2.0 — это открытый стандарт авторизации, позволяющий сторонним приложениям получать ограниченный доступ к защищенным ресурсам пользователя без передачи его учетных данных. OpenID Connect (OIDC) — надстройка над OAuth 2.0, добавляющая стандартизированный слой аутентификации.
 
@@ -55,26 +58,43 @@ sequenceDiagram
 
 ```typescript
 import express, { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { GetPublicKeyOrSecret } from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 
 const app = express();
-const JWT_SECRET = 'secret';
 
 interface AuthRequest extends Request {
   user?: any;
 }
+
+// Resource Server проверяет подпись токена публичным ключом (RS256)
+// авторизационного сервера, который он получает из JWKS
+const client = jwksClient({
+  jwksUri: 'https://auth.example.com/.well-known/jwks.json',
+});
+
+const getJwksKey: GetPublicKeyOrSecret = (header, callback) => {
+  client.getSigningKey(header.kid!, (err, key) => {
+    if (err) return callback(err);
+    callback(null, key?.getPublicKey());
+  });
+};
 
 function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing token' });
   }
-  try {
-    req.user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
-    next();
-  } catch (err) {
-    return res.status(403).json({ error: 'Invalid token' });
-  }
+  jwt.verify(
+    authHeader.split(' ')[1],
+    getJwksKey,
+    { algorithms: ['RS256'] },
+    (err, decoded) => {
+      if (err) return res.status(403).json({ error: 'Invalid token' });
+      req.user = decoded;
+      next();
+    },
+  );
 }
 
 app.get('/api/protected', requireAuth, (req: AuthRequest, res: Response) => {
@@ -88,13 +108,28 @@ app.get('/api/protected', requireAuth, (req: AuthRequest, res: Response) => {
 package main
 
 import (
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/MicahParks/keyfunc"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("secret")
+const jwksURL = "https://auth.example.com/.well-known/jwks.json"
+
+// Проверка токена по ключам авторизационного сервера (JWKS, RS256)
+func tokenValid(tokenStr string) bool {
+	jwtKeyfunc, err := keyfunc.Get(jwksURL, keyfunc.Options{RefreshInterval: time.Hour})
+	if err != nil {
+		return false
+	}
+	defer jwtKeyfunc.End()
+
+	_, err = jwt.Parse(tokenStr, jwtKeyfunc.Keyfunc, jwt.WithValidMethods([]string{"RS256"}))
+	return err == nil
+}
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,10 +139,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-		if err != nil || !token.Valid {
+		if !tokenValid(tokenStr) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -119,7 +151,7 @@ func main() {
 	http.HandleFunc("/api/protected", AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	}))
-	http.ListenAndServe(":8080", nil)
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 
@@ -143,6 +175,58 @@ public class SecurityConfig {
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Авторизационный код: приложение направляет пользователя на IdP и обменивает код на токены:
+
+```ts
+const state = crypto.randomUUID()
+
+app.get('/login', (_req, res) => {
+  const url = new URL('https://idp.example.com/authorize')
+  url.searchParams.set('response_type', 'code')
+  url.searchParams.set('client_id', CLIENT_ID)
+  url.searchParams.set('redirect_uri', REDIRECT_URI)
+  url.searchParams.set('scope', 'openid profile email')
+  url.searchParams.set('state', state)
+  res.cookie('oauth_state', state, { httpOnly: true })
+  res.redirect(url)
+})
+
+app.get('/callback', async (req, res) => {
+  if (req.cookies.oauth_state !== req.query.state) throw new Error('CSRF in OAuth flow')
+  const tokens = await exchangeCodeForTokens(req.query.code) // POST /token
+  const claims = verifyIdToken(tokens.id_token)             // JWT от IdP
+})
+```
+
+Проверка `state` защищает от подмены callback, а access_token идёт в Authorization header, не в cookie.
+
+## Паттерны использования
+
+- **Authorization Code + PKCE** — кодовая цепочка без хранения секрета клиента на фронте.
+- **id_token для аутентификации, access_token для вызовов API** — не смешивать роли.
+- **Валидация `aud` и `iss` токена** — подделка с другого IdP отвергается.
+- **Короткие токены, длинные refresh** — минимум окна для компрометации.
+
+## Антипаттерны и ловушки
+
+- **Implicit flow (устарел)** — токен в URL и history; современные приложения используют PKCE.
+- **Доверять любому токену IdP** — без проверки подписи и audience сессию подделывают.
+- **Игнорировать `state`/`nonce`** — OAuth flow остаётся уязвим к CSRF и fixation.
+- **Хранить access_token в localStorage** — XSS украдёт его без усилий.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** сторонний вход (Google/GitHub), SSO, сервисы, работающие от имени пользователя (доступ к внешним API).
+- **НЕ использовать:** собственная аутентификация паролем без внешних сервисов — OAuth 2.0 решает проблему доступа третьих сторон, а не все задачи логина.
+
+## Связанные темы
+
+- **jwt-rotation** — как IdP подписывает токены и ротирует ключи подписи.
+- **iam** — что можно делать с удостоверенной личностью внутри системы.
+- **secret-management** — клиентские секреты и ключи подписи.
 
 ## Вопросы
 

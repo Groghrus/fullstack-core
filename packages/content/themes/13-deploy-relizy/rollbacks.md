@@ -1,15 +1,18 @@
 ---
 id: rollbacks
+title: Откаты (Rollbacks)
 block: 13-deploy-relizy
 tags: [rollback, release, deployment, recovery, incident]
 order: 5
 related: [feature-flags, blue-green-deployment, canary-releases]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [bash]
 status: done
 ---
 
 # Откаты (Rollbacks)
+
+## Определение
 
 Rollback — это процесс возврата приложения к предыдущей стабильной версии при обнаружении проблем в новой версии.
 
@@ -19,7 +22,7 @@ Rollback — это процесс возврата приложения к пр
 - **Быстрое восстановление:** Возврат к рабочей версии снижает ущерб.
 - **Защита пользователей:** Пользователи снова получают стабильную версию.
 
-## Как работают Rollbacks архитектура
+## Как работают Rollbacks
 
 ```mermaid
 flowchart TD
@@ -39,7 +42,7 @@ sequenceDiagram
     App->>Metrics: Метрики новой версии
     Metrics-->>Alert: Ошибки выше порога
     Alert->>Ops: Уведомление
-    Ops->>App: Rollback к последней версии
+    Ops->>App: Rollback к предыдущей стабильной версии
 ```
 
 ## Примеры кода
@@ -51,6 +54,43 @@ sequenceDiagram
 ```bash
 kubectl rollout undo deployment/my-app
 ```
+
+## Пример использования: интеграция
+
+Возврат к предыдущей версии Deployment одной командой:
+
+```bash
+kubectl rollout undo deployment/api
+
+kubectl rollout status deployment/api
+```
+
+Helm и Argo Rollouts откатывают аналогично: `helm rollback api 3` возвращает прошлый release, а при анализе канарейки откат происходит автоматически.
+
+## Паттерны использования
+
+- **Решение принимается по метрикам, а не «на глаз»** — порог из SLO запускает откат.
+- **Скорость отката важнее долгих анализов** — 10 минут на rollback дешевле, чем час обсуждений.
+- **Откат схемы данные** — миграции обратимы или версионируются вместе с релизом.
+- **Автоматический откат в маршрутизации** — флаги и canary-аналитику стопят выкат сами.
+
+## Антипаттерны и ловушки
+
+- **Откат по «ощущениям», без алертов** — релиз живёт на проде дольше, чем надо.
+- **Откат кода без обратной миграции схемы** — новый миграционный код без согласования ломает данные.
+- **«Чинить поверх» вместо отката** — новый хотфикс поверх бага может углубить проблему.
+- **Не проверить старую версию** — откат возвращает тот же самый известный баг.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** любой прод-релиз с риском; откат обязателен в арсенале деплой-стратегии.
+- **НЕ использовать:** когда повреждение данных делает откат опаснее фикса; там решает восстановление из бэкапов, а не rollback.
+
+## Связанные темы
+
+- **feature-flags** — мгновенное отключение функции без деплоя.
+- **blue-green-deployment** — откат как переключение среды.
+- **canary-releases** — дозированный выкат с автоматическим откатом.
 
 ## Вопросы
 
@@ -101,5 +141,5 @@ kubectl rollout undo deployment/my-app
 
 ## Источники
 
-- Kubernetes Rollback Docs: https://kubernetes.io/docs/
-- Google SRE Book
+- Kubernetes — Rolling Update / Rollback: https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/
+- Google SRE Book — управление релизами: https://sre.google/sre-book/

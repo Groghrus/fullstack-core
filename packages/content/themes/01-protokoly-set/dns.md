@@ -91,11 +91,9 @@ flowchart TD
 import dns from 'node:dns/promises'
 
 async function inspectDomain(name: string) {
-  const [ips, mx, txt] = await Promise.all([
-    dns.resolve4(name) ?? dns.lookup(name, { family: 4 }),
-    dns.resolveMx(name).catch(() => []),
-    dns.resolveTxt(name).catch(() => []),
-  ])
+  const ips = await dns.resolve4(name).catch(() => dns.lookup(name, { family: 4 }))
+  const mx = await dns.resolveMx(name).catch(() => [])
+  const txt = await dns.resolveTxt(name).catch(() => [])
   return { ips, mx, txt }
 }
 
@@ -231,7 +229,7 @@ public List<Address> discover(String service, String domain) {
 - **Не различать NXDOMAIN от SERVFAIL** — «не существует» не лечится повторами и фолбеком; SERVFAIL — лечится.
 - **Резолвер-фолбек с повторами без backoff** — все клиенты одновременно долбят упавший DNS → «бьющее стадо» (см. Exponential Backoff).
 - **DNS как точка отказа** — единственный резолвер, единственный `A`-запись без запасного IP/каналов.
-- **Игнорировать TCP/TC-флаг** — большой ответ, обрезанный в UDP:52, приводит к ошибке, если не повторить по TCP.
+- **Игнорировать TCP/TC-флаг** — большой ответ, обрезанный в UDP:53, приводит к ошибке, если не повторить по TCP.
 
 ## Когда использовать / когда НЕ использовать
 
@@ -250,7 +248,7 @@ public List<Address> discover(String service, String domain) {
 
 - **TCP vs UDP** — DNS по умолчанию работает по UDP:53 (+ TCP при больших ответах); TCP — рукопашный фолбек.
 - **HTTP/2 и HTTP/3** — HTTP/3 (QUIC) работает поверх UDP, как и DNS; знание транспортного уровня важно для диагностики.
-- **gRPC** — встроенный DNS-резолвер и usage SRV/headless-сервисов для service discovery.
+- **gRPC** — встроенный DNS-резолвер и использование SRV/headless-сервисов для service discovery.
 - **Load Balancing** — round robin по A-записям, geoDNS, health-check и TTL при миграции трафика.
 - **Security** — DNSSEC, DNS spoofing/cache poisoning, DNS rebinding; DoH/DoT.
 - **Observability** — метрики резолюции (время, ошибки, кэш-hits) — классика «медленного DNS».

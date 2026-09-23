@@ -11,7 +11,8 @@
         "grpc",
         "websockets",
         "long-polling",
-        "server-sent-events"
+        "server-sent-events",
+        "web"
       ]
     },
     {
@@ -160,7 +161,8 @@
         "csrf",
         "sql-injection",
         "xss",
-        "ssrf"
+        "ssrf",
+        "security"
       ]
     },
     {
@@ -174,7 +176,8 @@
         "infrastructure-as-code",
         "terraform",
         "helm-charts",
-        "build-caching"
+        "build-caching",
+        "operations"
       ]
     },
     {

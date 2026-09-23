@@ -1,15 +1,18 @@
 ---
 id: waf
+title: WAF (Файрвол приложений)
 block: 11-bezopasnost
 tags: [waf, firewall, security, owasp, web]
 order: 8
 related: [ddos-protection, security, xss, sql-injection]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # WAF (Web Application Firewall)
+
+## Определение
 
 WAF анализирует и блокирует HTTP/HTTPS трафик, защищая приложения от атак L7 (OWASP Top 10, SQLi, XSS).
 
@@ -88,13 +91,63 @@ import java.io.IOException;
 public class WafFilter implements Filter {
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) req;
-        if (request.getQueryString() != null && request.getQueryString().contains("DROP TABLE")) {
+        String qs = request.getQueryString();
+        if (qs != null && qs.toLowerCase().contains("drop table")) {
+            res.setStatus(403);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"error\":\"Blocked by WAF\"}");
             return;
         }
         chain.doFilter(req, res);
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Cloudflare / NGINX WAF правила: блокировать паттерны SQLi/XSS на входе в приложение:
+
+```ts
+const WAF_RULES = [
+  { name: 'sqli', pattern: /(\bOR\b\s+\d+\s*=\s*\d+|\bUNION\b\s+SELECT)/i, action: 'block' },
+  { name: 'xss', pattern: /<script|javascript:/i, action: 'block' },
+]
+
+app.use((req, res, next) => {
+  const combined = `${req.url} ${JSON.stringify(req.query)} ${req.body ?? ''}`
+  for (const rule of WAF_RULES) {
+    if (rule.pattern.test(combined)) return res.status(403).json({ error: 'blocked' })
+  }
+  next()
+})
+```
+
+Правила живут в полноценном WAF (AWS WAF, Cloudflare, ModSecurity), которые обновляют сигнатуры и отдают метрики блокировок.
+
+## Паттерны использования
+
+- **WAF до приложения** — фильтр на edge/в точке входа, а не внутри бизнес-логики.
+- **Виртуальный патчинг** — закрыть известную уязвимость до выхода официального фикса.
+- **Rate limiting и блокировки IP/гео** — только как дополнение, не вместо кода.
+- **Тюнинг правил и мониторинг ложных срабатываний** — WAF должен учиться на реальном трафике.
+
+## Антипаттерны и ловушки
+
+- **WAF как единственная защита** — правила не заменяют prepared statements/экранирование: обходные пути есть всегда.
+- **Слишком агрессивные правила** — блок легитимного трафика хуже, чем атака.
+- **Не логировать блокировки** — не видно ни эффективности, ни ложных срабатываний.
+- **Правила из одного источника без обновлений** — стареют вместе с редактором сигнатур.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** публичные web-приложения; первый эшелон на L7 и «заплатка» до обновления кода.
+- **НЕ использовать:** как замену качественной разработке и безопасности кода; для интернета/внутренних сервисов можно обойтись — но тогда ответственность за фильтрацию целиком лежит на коде.
+
+## Связанные темы
+
+- **ddos-protection** — L7-фильтрация и rate limiting соседствуют с WAF.
+- **sql-injection** — атака, которую WAF обычно фильтрует в первую очередь.
+- **xss** — вторая классическая мишень WAF.
 
 ## Вопросы
 
@@ -145,5 +198,5 @@ public class WafFilter implements Filter {
 
 ## Источники
 
-- OWASP WAF Guide: https://owasp.org/
-- Cloudflare WAF: https://cloudflare.com/
+- OWASP WAF Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Web_Application_Firewall_Cheat_Sheet.html
+- Cloudflare WAF: https://developers.cloudflare.com/waf/

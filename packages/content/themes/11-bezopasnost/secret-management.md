@@ -1,5 +1,6 @@
 ---
 id: secret-management
+title: Управление секретами
 block: 11-bezopasnost
 tags: [secrets, vault, kms, security, credentials]
 order: 4
@@ -10,6 +11,8 @@ status: done
 ---
 
 # Управление секретами (Secret Management)
+
+## Определение
 
 Управление секретами — это практика безопасного хранения, ротации и доступа к конфиденциальным данным (паролям БД, API-ключам) с исключением их попадания в репозитории (Hardcoding).
 
@@ -62,15 +65,31 @@ package main
 
 import (
 	"context"
+	"fmt"
+
 	vault "github.com/hashicorp/vault/api"
 )
 
-func getSecret() error {
+func readDBPassword(addr, token string) (string, error) {
 	config := vault.DefaultConfig()
-	client, _ := vault.NewClient(config)
-	client.SetToken("token")
-	_, err := client.Logical().ReadWithContext(context.Background(), "secret/data/db")
-	return err
+	config.Address = addr
+	client, err := vault.NewClient(config)
+	if err != nil {
+		return "", err
+	}
+	// токен выдаётся Vault при входе приложения (в Kubernetes — по JWT пода)
+	client.SetToken(token)
+
+	secret, err := client.Logical().ReadWithContext(context.Background(), "secret/data/db")
+	if err != nil {
+		return "", err
+	}
+	data, ok := secret.Data["data"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("secret data missing")
+	}
+	password, _ := data["password"].(string)
+	return password, nil
 }
 ```
 
@@ -88,6 +107,52 @@ public class VaultLoader {
     private String dbPassword;
 }
 ```
+
+## Пример использования: интеграция
+
+Секреты приезжают из хранилища в среду запуска, а не из репозитория:
+
+```ts
+import { SecretManagerServiceClient } from '@google-cloud/secret-manager'
+
+const client = new SecretManagerServiceClient()
+
+async function getSecret(name: string): Promise<string> {
+  const [version] = await client.accessSecretVersion({
+    name: `projects/p/secrets/${name}/versions/latest`,
+  })
+  return version.payload.data.toString()
+}
+
+const DB_PASSWORD = process.env.DB_PASSWORD ?? await getSecret('db_password')
+```
+
+Access-логи и ротация версий в таком хранилище видны; в коде нет ни одного литерального секрета.
+
+## Паттерны использования
+
+- **Секреты в хранилище, не в git** — репозиторий не содержит ключей ни в `.env`, ни в конфигах.
+- **Динамическая выдача по запросу** — доступ к секрету строго минимален и логируется.
+- **Ротация версий** — смена секрета не требует перезаливки кода, старые версии отзываются.
+- **Inject в env/подключение на старте** — приложение не реализует собственную схему хранения секретов.
+
+## Антипаттерны и ловушки
+
+- **Секреты в репозитории** — утечка в тегах/форках сразу же роняет систему.
+- **Один секрет на всё окружение** — прод и тест связаны общим ключом.
+- **Ротация вручную «раз в год»** — как только секрет протёк — катастрофа.
+- **Кэшировать секреты в логах/обработчиках исключений** — при инциденте утекает больше, чем при атаке.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** любые деплои с паролями/ключами/токенами; всегда, когда в проде есть окружение.
+- **НЕ использовать:** для несекретной конфигурации — хранилища секретов медленнее и дороже, их место только там, где данные ценны.
+
+## Связанные темы
+
+- **oauth** — токены и клиентские секреты, которыми управляют по тем же правилам.
+- **jwt-rotation** — частный случай ротации секретов (ключи подписи).
+- **iam** — кто имеет право читать секрет.
 
 ## Вопросы
 
@@ -119,13 +184,13 @@ public class VaultLoader {
 Пояснение: AWS Secrets Manager предоставляет хранение и ротацию кредов.
 
 ### Q4
-**Что такое шифрование в покое (Encryption at Rest)?**
-- [ ] Шифрование сети
-- [x] Шифрование данных при их хранении на дисках и в базах данных
-- [ ] Выключение серверов
-- [ ] Удаление логов
+**Чем динамический секрет Vault отличается от статического в конфиге?**
+- [ ] Ничем
+- [x] Динамический создаётся под конкретную задачу с коротким сроком жизни и автоматически отзывается
+- [ ] Статический шифрует сетевое соединение
+- [ ] Динамический нельзя использовать для БД
 
-Пояснение: Защищает данные на диске при физической краже носителя.
+Пояснение: динамические секреты живут ровно столько, сколько нужно задаче — нет долгоживущих паролей.
 
 ### Q5
 **Что делать при случайном пуше боевого пароля в GitHub?**

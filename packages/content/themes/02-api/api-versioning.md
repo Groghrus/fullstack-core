@@ -184,8 +184,8 @@ import { NextFunction, Request, Response } from 'express'
 export function versioned(handlers: Record<number, (req: Request) => unknown>) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const requested = Number(req.header('X-API-Version') ?? req.query.version ?? 1)
-    const handler = handlers[requested] ?? handlers[1]
-    if (!handlers[requested]) {
+    const handler = handlers[requested]
+    if (!handler) {
       return res.status(400).json({ error: `unsupported version: ${requested}` })
     }
     res.setHeader('X-API-Version', String(requested))

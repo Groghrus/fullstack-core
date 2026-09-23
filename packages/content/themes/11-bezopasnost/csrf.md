@@ -1,15 +1,18 @@
 ---
 id: csrf
+title: CSRF
 block: 11-bezopasnost
 tags: [csrf, xsrf, security, cookies, web]
 order: 11
 related: [cors, security, web]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # CSRF (Cross-Site Request Forgery)
+
+## Определение
 
 CSRF — уязвимость, при которой злоумышленник заставляет авторизованного пользователя выполнить нежелательные действия (перевод денег, смена пароля) без его ведома.
 
@@ -98,6 +101,44 @@ public class SecurityConfig {
 }
 ```
 
+## Пример использования: интеграция
+
+Защита через same-site cookie + проверка CSRF-токена на все мутирующие запросы:
+
+```ts
+app.use(cookieParser())
+app.use('/api', csrf({ cookie: { httpOnly: true, sameSite: 'strict' } }))
+
+app.post('/api/transfer', csrfProtection, (req, res) => {
+  // токен валиден — выполняем перевод
+})
+```
+
+Cookie с `SameSite=Strict/Lax` блокирует отправку в кросс-сайтных запросах, а двойное подтверждение токеном закрывает сценарии, где cookie всё же приходит.
+
+## Паттерны использования
+
+- **`SameSite=Lax/Strict` на куках аутентификации** — первая и главная защита.
+- **CSRF-токен на state-changing запросы** — POST/PUT/DELETE, не GET.
+- **Вспомогательная защита** — проверка `Origin`/`Referer` заголовков.
+- **Принудительный HTTPS + `Secure` cookie** — токен и кука не ходят в открытом виде.
+
+## Антипаттерны и ловушки
+
+- **Положиться только на токен без SameSite** — токен в URL/заголовке утекает в referer.
+- **Защищать только POST** — другие изменяющие методы остаются открытыми.
+- **Глобальный `Access-Control-Allow-Origin: *`** — превращает защиту CSRF в мишень.
+- **Рассылка токена в localStorage** — XSS получит доступ к токену напрямую.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** cookie-based аутентификация — всегда; любое публичное веб-приложение с изменяющими запросами.
+- **НЕ использовать:** для API без cookie-аутентификации (токен в Authorization header) — где нет автоматической отправки, там нет и проблемы; для служебных внутренних сервисов с ограниченным доступом.
+
+## Связанные темы
+
+- **cors** — перекрёстные запросы усложняют политику доступа к API.
+
 ## Вопросы
 
 ### Q1
@@ -139,13 +180,13 @@ public class SecurityConfig {
 ### Q5
 **Какой HTTP-метод обычно используется для CSRF-атаки через форму?**
 - [ ] GET
-- [x] POST, PUT или DELETE
+- [x] POST
 - [ ] OPTIONS
 - [ ] TRACE
 
-Пояснение: Используются методы, изменяющие состояние данных.
+Пояснение: HTML-формы нативно отправляют только GET и POST; POST — типовой вектор CSRF. PUT/DELETE требуют fetch/XHR, которые на чужом домене блокируются CORS-префлайтом.
 
 ## Источники
 
 - OWASP CSRF: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
-- MDN - SameSite cookies: https://developer.mozilla.org/
+- MDN - SameSite cookies: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesitevalue

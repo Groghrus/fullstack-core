@@ -1,15 +1,18 @@
 ---
 id: encryption-at-rest
+title: Шифрование данных на диске
 block: 11-bezopasnost
 tags: [encryption, security, at-rest, database, kms]
 order: 6
 related: [encryption-in-transit, tls, secret-management]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # Шифрование в покое (Encryption at Rest)
+
+## Определение
 
 Шифрование в покое защищает данные (файлы, БД, бэкапы), когда они физически записаны на носители (SSD, HDD, S3).
 
@@ -47,13 +50,13 @@ sequenceDiagram
 ```typescript
 import crypto from 'crypto';
 const key = crypto.randomBytes(32);
-const iv = crypto.randomBytes(16);
 
 function encrypt(text: string) {
+  const iv = crypto.randomBytes(12); // 96 бит — стандарт для GCM
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   let enc = cipher.update(text, 'utf8', 'hex');
   enc += cipher.final('hex');
-  return { enc, tag: cipher.getAuthTag().toString('hex') };
+  return { iv: iv.toString('hex'), enc, tag: cipher.getAuthTag().toString('hex') };
 }
 ```
 
@@ -65,12 +68,24 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 )
 
 func Encrypt(plain, key []byte) ([]byte, error) {
-	block, _ := aes.NewCipher(key)
-	gcm, _ := cipher.NewGCM(block)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	// nonce должен быть случайным и уникальным для каждого шифрования
 	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	// возвращаем nonce + ciphertext (nonce нужен для расшифровки)
 	return gcm.Seal(nonce, nonce, plain, nil), nil
 }
 ```
@@ -91,6 +106,51 @@ public class Encryption {
     }
 }
 ```
+
+## Пример использования: интеграция
+
+Поле-«железный» конфиденциальный атрибут шифруется приложением до записи (AEAD на ключе из KMS):
+
+```ts
+import { subtle } from 'node:crypto'
+
+async function encryptField(plain: string, key: CryptoKey): Promise<string> {
+  const nonce = crypto.getRandomValues(new Uint8Array(12))
+  const ct = await subtle.encrypt(
+    { name: 'AES-GCM', iv: nonce },
+    key,
+    Buffer.from(plain),
+  )
+  return Buffer.concat([nonce, Buffer.from(ct)]).toString('base64')
+}
+```
+
+DEK берётся из KMS по запросу и живёт в памяти процесса; сами диски и бэкапы дополнительно шифруются на уровне хранилища.
+
+## Паттерны использования
+
+- **Envelope encryption** — данные на DEK, DEK на KEK в KMS; ключи отдельно от данных.
+- **Шифровать чувствительные поля приложением** — то, что хранилище шифрует «для галочки», утекает с ошибкой приложения.
+- **Ротация DEK без перешифровки всего** — меняется только обёртка, данные не трогаются.
+- **Шифрование бэкапов** — носители и снэпшоты тоже «at rest».
+
+## Антипаттерны и ловушки
+
+- **Ключ в конфиге/коде рядом с данными** — шифрование превращается в декорацию.
+- **Шифрование по-умолчанию на уровне диска только** — утечка через SQL-дамп не остановлена.
+- **Хранить нешифрованные превью/логи** — данные «at rest» снова утекают через соседний файл.
+- **Забыть про ротацию KEK** — компрометация одного ключа подставляет всё.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** PCI/PHI/PII, бэкапы, снапшоты; любой чувствительный атрибут в БД.
+- **НЕ использовать:** для публичных/нечувствительных данных — шифрование стоит ресурсов и усложняет полнотекстовый поиск; ключевой момент — защищать действительно ценные поля.
+
+## Связанные темы
+
+- **encryption-in-transit** — защита данных в сети дополняет защиту на диске.
+- **tls** — передача и канал, и хранилище требуют разных механизмов.
+- **secret-management** — управление ключами/секретами, от которых зависит вся схема.
 
 ## Вопросы
 

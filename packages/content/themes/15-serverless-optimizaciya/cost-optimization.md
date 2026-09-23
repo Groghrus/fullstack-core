@@ -1,15 +1,18 @@
 ---
 id: cost-optimization
+title: Оптимизация расходов
 block: 15-serverless-optimizaciya
 tags: [cost, optimization, finops, cloud, scaling]
 order: 2
 related: [serverless-limitations]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [typescript]
 status: done
 ---
 
 # Оптимизация расходов (Cost Optimization)
+
+## Определение
 
 Cost Optimization (FinOps) — практика управления облачными затратами и оптимизации использования ресурсов для снижения расходов бизнеса без потери производительности.
 
@@ -59,6 +62,49 @@ function findZombieResources(resources: CloudResource[]): CloudResource[] {
   return resources.filter(res => res.lastUsedDays > 30 && !res.tags['owner'])
 }
 ```
+
+## Пример использования: интеграция
+
+Обнаружение «зомби»-ресурсов через billing API и авто-стоп:
+
+```ts
+import { CostExplorerClient, GetCostAndUsageCommand } from '@aws-sdk/client-ce'
+
+async function findIdle() {
+  const res = await client.send(new GetCostAndUsageCommand({
+    TimePeriod: { Start: todayMinus30d, End: today },
+    Granularity: 'MONTHLY',
+    GroupBy: [{ Type: 'DIMENSION', Key: 'RESOURCE_ID' }],
+  }))
+  return res.ResultsByTime?.[0]?.Groups
+    ?.filter((g) => zeroCost(g))    // тратит 0 — кандидат на удаление
+}
+```
+
+Idle-диски, EIP и неиспользуемые таблицы находятся скриптом; и только мера «удалён/выключен» тратит деньги вхолостую.
+
+## Паттерны использования
+
+- **Метрики затрат и алерты на аномалии** — рост счёта не сюрприз квартала, а событие недели.
+- **Right-sizing по фактическому использованию** — CPU/RAM соответствуют нагрузке, а не «на вырост».
+- **Коммитменты для постоянной нагрузки** — Reserved/Savings Plans дешевле on-demand на стабильных сервисах.
+- **Авто-стоп и удаление idle** — dev/тест-окружения выключаются на ночь, «зомби» выпиливаются.
+
+## Антипаттерны и ловушки
+
+- **Резать сервис ради экономии** — экономия на критичных capacity оборачивается инцидентом дороже.
+- **Платить больше on-demand на постоянной нагрузке** — коммитмент дешевле, чем «готовность к всплеску без него».
+- **Right-sizing без метрик** — угадывание вместо данных размножает проблемы.
+- **Забытые брошенные ресурсы** — «забыли, но платим»: счёт растёт незаметно.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** облачные команды с потреблением по модели платежей (pay-as-you-go); всё, где счёт бьёт по себестоимости.
+- **НЕ использовать:** для жёстко командличенных контрактов с фиксированной ценой — там выгода от оптимизации только в экономии на ресурсах, а не в пересчёте биллинга.
+
+## Связанные темы
+
+- **serverless-limitations** — как ограничения FaaS влияют на цену вызовов.
 
 ## Вопросы
 

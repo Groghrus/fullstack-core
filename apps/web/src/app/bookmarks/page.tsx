@@ -97,7 +97,7 @@ export default function BookmarksPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="shrink-0"
+                        className="shrink-0 cursor-pointer"
                         aria-label="Убрать из закладок"
                         title="Убрать из закладок"
                         onClick={() => toggleBookmark(t.themeId)}

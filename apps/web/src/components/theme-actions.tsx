@@ -1,6 +1,6 @@
 'use client'
 
-import {useEffect, useState} from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link'
 import {ArrowLeft, ArrowRight, Bookmark, Check, Circle} from 'lucide-react';
 import { useProgress } from '@/hooks/use-progress'
@@ -21,22 +21,14 @@ export function ThemeActions({
   nextId,
 }: ThemeActionsProps) {
   const { progress, markDone, toggleBookmark, markRead } = useProgress()
-    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        setMounted(true)
-    }, [])
-
-    useEffect(() => {
-        if (!mounted) return
-
         markRead(themeId)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mounted, themeId])
+    }, [themeId, markRead])
 
-    const p = mounted ? progress[themeId] : undefined
-    const done = mounted && p?.status === 'done'
-    const bookmarked = mounted && p?.bookmarked
+    const p = progress[themeId]
+    const done = p?.status === 'done'
+    const bookmarked = p?.bookmarked
 
   return (
     <>
@@ -67,7 +59,7 @@ export function ThemeActions({
           >
               <div className="flex items-center justify-start">
                   <ArrowLeft size="16"/>
-                  <div className="truncate text-s text-muted-foreground">Предыдущая</div>
+                  <div className="truncate text-xs text-muted-foreground">Предыдущая</div>
               </div>
             <div className="mt-1 truncate font-medium">
               {getThemeTitle(prevId)}
@@ -82,7 +74,7 @@ export function ThemeActions({
             className="w-fit max-w-full min-w-0 justify-self-end rounded-lg border p-3 text-right text-sm hover:bg-accent"
           >
               <div className="flex items-center justify-end">
-                  <div className="truncate text-s text-muted-foreground">Следующая</div>
+                  <div className="truncate text-xs text-muted-foreground">Следующая</div>
                   <ArrowRight size="16"/>
               </div>
 

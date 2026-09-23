@@ -40,7 +40,7 @@ status: done
 
 Ключевые элементы:
 
-- **Registry (реестр)** — хранилище «сервис → список инстансов {host, port, метаданные}` с TTL и heartbeat: Consul, etcd, ZooKeeper, встроенно в K8s.
+- **Registry (реестр)** — хранилище «сервис → список инстансов `{host, port, метаданные}`» с TTL и heartbeat: Consul, etcd, ZooKeeper, встроенно в K8s.
 - **Registration (регистрация)** — self-registration (сервис сам пишет себя) или third-party registration (регистратор следит за сервисами).
 - **Heartbeat / TTL** — инстанс периодически «стучит в реестр», иначе запись истекает и удаляется (защита от «живых» адресов после краша).
 - **DNS-based discovery** — `orders.default.svc.cluster.local` в Kubernetes, SRV-записи для host+port (см. DNS).
@@ -114,8 +114,6 @@ package main
 import (
 	"context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/balancer"
-	"google.golang.org/grpc/balancer/roundrobin"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -129,7 +127,6 @@ func dial(ctx context.Context, target string) *grpc.ClientConn {
 	if err != nil {
 		panic(err)
 	}
-	balancer.NewBuilder(...) // используется встроенный roundrobin
 	return conn
 }
 ```

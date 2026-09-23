@@ -1,15 +1,18 @@
 ---
 id: terraform
+title: Terraform
 block: 12-devops-infrastruktura
 tags: [terraform, iac, state, hashicorp, devops]
 order: 5
 related: [infrastructure-as-code, kubernetes, ci-cd]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [hcl]
 status: done
 ---
 
 # Terraform и управление состоянием (State Management)
+
+## Определение
 
 Terraform — инструмент IaC для создания и управления ресурсами с использованием HCL.
 
@@ -57,6 +60,54 @@ terraform {
   }
 }
 ```
+
+## Пример использования: интеграция
+
+Remote state в S3 с блокировкой — без файла на дисках разработчиков:
+
+```hcl
+terraform {
+  backend "s3" {
+    bucket         = "tf-state-prod"
+    key            = "app/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "tf-locks"
+  }
+}
+
+resource "aws_db_instance" "db" {
+  engine         = "postgres"
+  instance_class = "db.t4g.micro"
+  allocated_storage = 20
+}
+```
+
+State хранится в общем месте, доступ блокируется конкурирующими apply — параллельные изменения не разрушают инфраструктуру.
+
+## Паттерны использования
+
+- **Remote state + lock** — общее хранилище и отсутствие конфликтов apply.
+- **Модули и окружения** — единый код, параметризованные значения.
+- **Plan/apply в CI** — изменения проходят ревью как PR, не применяются вручную.
+- **Terraform workspace / отдельные state'ы на окружение** — изоляция дев и прод.
+
+## Антипаттерны и ловушки
+
+- **Локальный state на машине инженера** — кто не запускал — «не знает» о ресурсах.
+- **Работа без lock** — два apply одновременно перетирают state и ресурс.
+- **Редактирование state руками** — ломает соответствие кода реальности, дальше `plan` врёт.
+- **Ключи провайдера в репозитории** — учетные данные утекают вместе с кодом.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** управление облачной инфраструктурой через код; команды из нескольких инженеров.
+- **НЕ использовать:** разовые эксперименты на одиночно администрируемых серверах — там хватит скриптов; IaC окупается повторяемостью и числом людей.
+
+## Связанные темы
+
+- **infrastructure-as-code** — подход, чей инструмент Terraform.
+- **kubernetes** — как Terraform управляет и содержимым кластера.
+- **ci-cd** — автоматизация plan/apply в пайплайне.
 
 ## Вопросы
 

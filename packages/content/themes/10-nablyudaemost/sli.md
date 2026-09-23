@@ -1,15 +1,18 @@
 ---
 id: sli
+title: SLI (Индикаторы уровня обслуживания)
 block: 10-nablyudaemost
 tags: [sli, sre, reliability, metrics, indicators]
 order: 9
 related: [slo, error-budgets, monitoring]
-difficulty: intermediate
+difficulty: medium
 languages: [typescript, go, java]
 status: done
 ---
 
 # Индикаторы уровня обслуживания (SLI)
+
+## Определение
 
 SLI (Service Level Indicator, Индикатор уровня обслуживания) — это количественная метрика производительности или доступности системы, на основе которой вычисляется выполнение целей SLO.
 
@@ -89,6 +92,49 @@ public class SliCalculator {
 }
 ```
 
+## Пример использования: интеграция
+
+SLI считается из метрик на границе системы — доля успешных запросов за окно:
+
+```ts
+async function sliAvailability(): Promise<number> {
+  const good = await prometheus.query(
+    'sum(rate(http_requests_total{status=~"2..|3.."}[5m]))',
+  )
+  const total = await prometheus.query(
+    'sum(rate(http_requests_total[5m]))',
+  )
+  return (good / total) * 100
+}
+```
+
+По тому же принципу считаются SLI на время ответа (доля запросов быстрее порога) — измеряется именно пользовательский путь, а не внутренний.
+
+## Паттерны использования
+
+- **SLI от пользовательского пути** — граница входа, а не серверные внутренности.
+- **Один SLI → один SLO** — каждой метрике надёжности соответствует явная цель.
+- **Окно 28–30 дней** — синхронно с бюджетом ошибок.
+- **Стабильные определения** — «успешный запрос» определён один раз и не пересматривается от инцидента к инциденту.
+
+## Антипаттерны и ловушки
+
+- **SLI по «всем запросам разом»** — разные действия в одной куче прячут проблему редкой операции.
+- **Считать 5xx как успех** — «успешный» значит 2xx/3xx, иначе алерты молчат.
+- **SLI без SLO** — метрика без целевого значения ни на что не влияет.
+- **Измерение на внутренней границе** — поверх балансировщика и CDN SLI отличается от железа.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** когда системы с регулярными релизами и требованием к надёжности; SLI нужен каждому SLO.
+- **НЕ использовать:** для прототипов и внутренних утилит без явного требования к доступности — цифры без решений не имеют смысла.
+
+## Связанные темы
+
+- **slo** — цели, которым соответствуют SLI.
+- **error-budgets** — остаток надёжности, считаемый от SLI.
+- **monitoring** — метрики, из которых выводятся SLI.
+
 ## Вопросы
 
 ### Q1
@@ -103,7 +149,7 @@ public class SliCalculator {
 ### Q2
 **Какой из следующих примеров лучше всего подходит в качестве хорошего SLI для веб-приложения?**
 - [ ] Процент использования дискового пространства
-- [x] Доля HTTP-запросов, выполненных быстрее 200 мс без учета ошибок 5xx
+- [x] Доля HTTP-запросов, выполненных быстрее 200 мс
 - [ ] Количество закоммиченных строк в день
 - [ ] Температура процессора
 
@@ -138,5 +184,5 @@ public class SliCalculator {
 
 ## Источники
 
-- Google SRE Book - Defining SLIs: https://sre.google/sre-book/service-level-objectives/
-- Alex Hidalgo — Implementing Service Level Objectives
+- Google SRE Book - Service Level Objectives: https://sre.google/sre-book/service-level-objectives/
+- Alex Hidalgo — Implementing Service Level Objectives: https://www.oreilly.com/library/view/implementing-service-level/9781492076803/

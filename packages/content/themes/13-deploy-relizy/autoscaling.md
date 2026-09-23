@@ -1,15 +1,18 @@
 ---
 id: autoscaling
+title: Автомасштабирование (Autoscaling)
 block: 13-deploy-relizy
 tags: [autoscaling, hpa, kubernetes, scaling, metrics]
 order: 6
 related: [rolling-deployments, blue-green-deployment, canary-releases]
-difficulty: intermediate
-languages: [typescript, go, java]
+difficulty: medium
+languages: [yaml]
 status: done
 ---
 
 # Автомасштабирование (Autoscaling)
+
+## Определение
 
 Autoscaling — автоматическое изменение количества экземпляров приложения в зависимости от нагрузки.
 
@@ -19,11 +22,11 @@ Autoscaling — автоматическое изменение количест
 - **Экономия ресурсов:** Меньше экземпляров при низкой нагрузке.
 - **Доступность:** Больше экземпляров при пиковых нагрузках.
 
-## Как работает Autoscaling архитектура
+## Как работает Autoscaling
 
 ```mermaid
 flowchart TD
-    A[Нагрузка растёт] --> B[Метрики CPU/RPS]
+    A[Нагрузка растёт] --> B[Метрики CPU/память]
     B --> C[HPA решает]
     C -->|масштабировать| D[Добавить реплики]
     C -->|снижать| E[Удалить реплики]
@@ -68,6 +71,58 @@ spec:
           type: Utilization
           averageUtilization: 70
 ```
+
+## Пример использования: интеграция
+
+HPA масштабирует число реплик по средней загрузке CPU:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+```
+
+При устойчивой нагрузке выше 70% CPU число реплик растёт до максимума; при спаде — схлопывается до минимума.
+
+## Паттерны использования
+
+- **Метрики, отражающие реальную загруженность** — CPU/request-латенция, кастомные метрики очередей.
+- **Порог с запасом и стабилизация** — threshold + cooldown не дают «пилу» реплик.
+- **Мин/макс границы** — никогда не ниже рабочего числа, не выше лимитов кластера.
+- **Горизонтальное + вертикальное** — HPA по репликам, VPA по ресурсам — разные инструменты.
+
+## Антипаттерны и ловушки
+
+- **Только CPU-метрика для всего** — I/O-интенсивный сервис спит при 5% CPU и не масштабируется.
+- **Пила (thrashing)** — слишком чувствительные пороги дёргают реплики вверх-вниз.
+- **Без верхней границы** — всплеск «съедает» кластер целиком.
+- **Реакция с задержкой** — метрики входят с опозданием; без cooldown система не успевает стабилизироваться.
+
+## Когда использовать / когда НЕ использовать
+
+- **Использовать:** сервисы с переменной нагрузкой и тарификацией за использование; K8s-приложения под пиковые сутки.
+- **НЕ использовать:** стабильные внутренние сервисы с постоянной нагрузкой — автоскейл лишь добавляет неопределённость; маленькие деплойменты, где одна реплика покрывает весь трафик.
+
+## Связанные темы
+
+- **rolling-deployments** — обновления, на которые накладывается автомасштабирование.
+- **blue-green-deployment** — отдельная стратегия релиза с полной заменой среды.
+- **canary-releases** — выкат новой версии под контролем метрик.
 
 ## Вопросы
 
@@ -118,5 +173,5 @@ spec:
 
 ## Источники
 
-- Kubernetes HPA Docs: https://kubernetes.io/docs/
-- Cloud Native Patterns
+- Kubernetes — Horizontal Pod Autoscaler: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+- HPA walkthrough (CPU example): https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
