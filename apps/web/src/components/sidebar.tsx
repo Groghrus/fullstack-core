@@ -18,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { ThemeProvider } from '@/components/theme-provider'
 import versionData from '../../../../package.json'
+import {Badge} from '@/components/ui/badge';
 
 const version = versionData.version
 
@@ -181,11 +182,8 @@ export function Sidebar({
       </ScrollArea>
 
       {/* Футер сайдбара */}
-      <div className="border-t p-3 flex items-center gap-2 space-x-2 space-y-2">
-        <div className="text-l font-normal text-muted-foreground">
-          v{version}
-        </div>
-
+      <div className="border-t p-3 flex items-center justify-center gap-2">
+        <Badge variant="outline">v {version}</Badge>
         <GitHubButton />
         <DownloadApkButton />
       </div>
