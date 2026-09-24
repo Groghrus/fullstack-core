@@ -1,6 +1,7 @@
 import { Stack, usePathname } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useRef, useState } from 'react'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Animated,
   Easing,
@@ -17,6 +18,7 @@ import { ThemeProvider, useTheme } from '../src/lib/theme'
 function RootNavigator() {
   const { dark, toggle } = useTheme()
   const c = palette(dark)
+  const insets = useSafeAreaInsets()
   const pathname = usePathname()
   const { width: winWidth, height: winHeight } = useWindowDimensions()
   const drawerWidth = Math.min(320, Math.round(winWidth * 0.85))
@@ -99,7 +101,7 @@ function RootNavigator() {
           <Animated.View
             style={[
               styles.drawer,
-              { width: drawerWidth, backgroundColor: c.sidebar },
+              { width: drawerWidth, backgroundColor: c.sidebar, paddingTop: insets.top },
               { transform: [{ translateX: slide }] },
             ]}
           >
@@ -118,9 +120,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootNavigator />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }
 

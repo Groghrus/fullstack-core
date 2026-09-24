@@ -51,4 +51,11 @@ npx expo start --web            # то же, но открыть можно в �
 
 - **Real-устройство**: установить **Expo Go**, телефон и ПК в одной сети → отсканировать QR из терминала `expo start`. Если не видит сеть, поднять туннель по USB: `adb reverse tcp:8081 tcp:8081`, затем в Expo Go → *Enter URL manually* → `exp://localhost:8081`.
 - **Браузер**: `npx expo start --web` → открой `http://localhost:8081`. Диаграммы рендерятся через `dangerouslySetInnerHTML` (native — через `react-native-webview`).
-- **Сборка APK**: `npx expo prebuild` → `cd android && ./gradlew assembleRelease` (нужен Android SDK + JDK).
+- **Сборка APK**(нужен Android SDK + JDK):
+```bash
+cd X:\XXX\fullstack-core\apps\mobile
+npx expo prebuild --clean --platform android
+cd android
+$env:ANDROID_HOME = "X:\Users\XXX\AppData\Local\Android\Sdk"
+./gradlew assembleRelease
+```
