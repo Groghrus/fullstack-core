@@ -25,8 +25,26 @@ globalThis.Node = dom.window.Node
 globalThis.Element = dom.window.Element
 
 dom.window.SVGElement.prototype.getBBox = function () {
-  const text = this.textContent || ''
-  return { x: 0, y: 0, width: text.length ? text.length * 7 + 16 : 60, height: 30 }
+  // JSDOM не рендерит SVG, поэтому имитируем измерение текста: длинные подписи
+  // переносятся по ширине ~200px (как браузерный mermaid с htmlLabels),
+  // отчего узел становится выше, а не бесконечно шире.
+  const text = (this.textContent || '').replace(/[{}\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim()
+  const { w, h } = measureText(text)
+  return { x: 0, y: 0, width: w, height: h }
+}
+
+/** imitates browser text measuring done by mermaid's htmlLabels (max-width: 200px). */
+function measureText(text) {
+  const charW = 7.2
+  const padW = 16
+  const padH = 12
+  const lineH = 24
+  const maxInnerW = 200 - padW
+  const raw = (text || '').length * charW
+  const lines = Math.max(1, Math.ceil(raw / maxInnerW))
+  const w = Math.min(raw, maxInnerW) + padW
+  const h = lines * lineH + padH
+  return { w: Math.round(w), h: Math.round(h) }
 }
 
 const mermaid = (await import('mermaid')).default
@@ -180,9 +198,98 @@ function extractText(md) {
   return s.replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * JSDOM не измеряет текст, поэтому для flowchart mermaid оставляет foreignObject
+ * размером 0 и miscalculates viewBox (берётся из mock getBBox корня <svg>).
+ * После рендера пересчитываем размеры узлов по длине подписи и восстанавливаем viewBox.
+ */
+function postProcessSvg(svg) {
+  const doc = new dom.window.DOMParser().parseFromString(svg, 'image/svg+xml')
+  const root = doc.documentElement
+  const nodes = root.querySelectorAll('g.node')
+  const clusters = root.querySelectorAll('g.cluster')
+  if (!nodes.length && !clusters.length) return svg
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  let touched = 0
+
+  // Кластеры (subgraph): включаем их рамки с подписями в границы viewBox.
+  for (const g of clusters) {
+    const rect = g.querySelector(':scope > rect')
+    if (!rect) continue
+    const x = parseFloat(rect.getAttribute('x') || '0')
+    const y = parseFloat(rect.getAttribute('y') || '0')
+    const w = parseFloat(rect.getAttribute('width') || '0')
+    const h = parseFloat(rect.getAttribute('height') || '0')
+    if (!(w > 0) || !(h > 0)) continue
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + w)
+    maxY = Math.max(maxY, y + h)
+    touched++
+    // Расширить высоту кластера под заголовок (он рисуется чуть выше rect).
+    const label = g.querySelector('.cluster-label')
+    if (label) {
+      const tm = label.getAttribute('transform')?.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/)
+      if (tm) {
+        const ty = parseFloat(tm[2])
+        minY = Math.min(minY, ty - 3)
+      }
+    }
+  }
+
+  for (const g of nodes) {
+    const tm = g.getAttribute('transform')?.match(/translate\(([-\d.]+), ?([-\d.]+)\)/)
+    if (!tm) continue
+    const tx = parseFloat(tm[1])
+    const ty = parseFloat(tm[2])
+    const label = (g.textContent || '').replace(/<\s*style[^>]*>[\s\S]*?<\/?style>/gi, '').replace(/\s+/g, ' ').trim()
+    const { w: nodeW, h: nodeH } = measureText(label)
+    const rect = g.querySelector('rect.basic, rect[class*="container"]')
+    if (rect) {
+      rect.setAttribute('x', String(-nodeW / 2))
+      rect.setAttribute('y', String(-nodeH / 2))
+      rect.setAttribute('width', String(nodeW))
+      rect.setAttribute('height', String(nodeH))
+      touched++
+    }
+    const fo = g.querySelector('foreignObject')
+    if (fo) {
+      fo.setAttribute('width', String(nodeW - 4))
+      fo.setAttribute('height', String(nodeH - 4))
+    }
+    minX = Math.min(minX, tx - nodeW / 2)
+    minY = Math.min(minY, ty - nodeH / 2)
+    maxX = Math.max(maxX, tx + nodeW / 2)
+    maxY = Math.max(maxY, ty + nodeH / 2)
+  }
+
+  // Подписи рёбер и кластеров: foreignObject без размеров должен показывать текст.
+  for (const fo of root.querySelectorAll('foreignObject')) {
+    if (parseFloat(fo.getAttribute('width') || '0') > 0) continue
+    const text = (fo.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!text) continue
+    const { w, h } = measureText(text)
+    fo.setAttribute('width', String(w))
+    fo.setAttribute('height', String(h))
+  }
+
+  if (touched && isFinite(minX)) {
+    const pad = 8
+    const vbW = maxX - minX + pad * 2
+    const vbH = maxY - minY + pad * 2
+    root.setAttribute('viewBox', `${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`)
+    const style = root.getAttribute('style') || ''
+    root.setAttribute('style', style.replace(/max-width:\s*[\d.]+\s*px/, `max-width: ${vbW.toFixed(1)}px`))
+  }
+  return new dom.window.XMLSerializer().serializeToString(root)
+}
+
 async function renderDiagram(code, index) {
   const { svg } = await mermaid.render(`diagram-${index}-${Date.now()}`, code)
-  return svg
+  return postProcessSvg(svg)
 }
 
 async function main() {

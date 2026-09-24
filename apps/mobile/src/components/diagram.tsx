@@ -4,10 +4,15 @@ import { WebView } from 'react-native-webview'
 import { palette } from '../lib/palette'
 import { useTheme } from '../lib/theme'
 
-function parseViewBox(svg: string): { w: number; h: number } | null {
+function parseViewBox(svg: string): { x: number; y: number; w: number; h: number } | null {
   const m = svg.match(/viewBox="(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)"/)
   if (!m) return null
-  return { w: parseFloat(m[3]), h: parseFloat(m[4]) }
+  return { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) }
+}
+
+function svgStyle(svg: string): string {
+  const m = svg.match(/<svg[^>]*style="([^"]*)"/)
+  return m ? m[1] : ''
 }
 
 export function Diagram({ svg }: { svg: string }) {
@@ -16,17 +21,15 @@ export function Diagram({ svg }: { svg: string }) {
   const { width } = useWindowDimensions()
   const inner = Math.min(width - 36, 900)
 
-  const ratio = useMemo(() => {
-    const vb = parseViewBox(svg)
-    return vb ? vb.h / vb.w : 0.5
-  }, [svg])
+  const vb = useMemo(() => parseViewBox(svg), [svg])
+  const ratio = vb ? vb.h / vb.w : 0.5
 
   const html = useMemo(
     () => `<!DOCTYPE html><html><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   html,body { margin:0; padding:0; background:#0f172a; }
-  .wrap { display:flex; justify-content:center; }
+  .wrap { display:flex; justify-content:center; align-items:center; }
   svg { max-width:100%; height:auto; display:block; background:#0f172a; }
 </style></head>
 <body><div class="wrap">${svg}</div></body></html>`,
@@ -36,7 +39,11 @@ export function Diagram({ svg }: { svg: string }) {
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.wrap, { backgroundColor: c.card, borderColor: c.border }]}>
-        <div dangerouslySetInnerHTML={{ __html: svg }} />
+        <div
+          className="diagram-svg"
+          style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
       </View>
     )
   }

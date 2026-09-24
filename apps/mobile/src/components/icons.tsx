@@ -162,3 +162,14 @@ export function RectIcon({ color, size = 14 }: IconProps) {
     </Svg>
   )
 }
+
+export function LayoutGridIcon({ color, size = 14 }: IconProps) {
+  return (
+    <Svg {...base(size)} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Rect width={7} height={7} x={3} y={3} rx={1} />
+      <Rect width={7} height={7} x={14} y={3} rx={1} />
+      <Rect width={7} height={7} x={14} y={14} rx={1} />
+      <Rect width={7} height={7} x={3} y={14} rx={1} />
+    </Svg>
+  )
+}

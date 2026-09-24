@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
-import { Search, Bookmark, X, PanelLeftClose } from 'lucide-react'
-import { GitHubButton } from '@/components/ui/github-button'
+import { Search, Bookmark, LayoutGrid, X, PanelLeftClose } from 'lucide-react'
 import { DownloadApkButton } from '@/components/ui/download-apk-button'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
@@ -151,6 +150,18 @@ export function Sidebar({
           ) : (
             <nav className="space-y-1">
               <Link
+                href="/"
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent',
+                  activeTheme === 'catalog' &&
+                    'bg-accent text-accent-foreground',
+                )}
+              >
+                <LayoutGrid className="size-4 text-muted-foreground" />
+                <span>Каталог</span>
+              </Link>
+
+              <Link
                 href="/bookmarks"
                 className={cn(
                   'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent',
@@ -184,7 +195,6 @@ export function Sidebar({
       {/* Футер сайдбара */}
       <div className="border-t p-3 flex items-center justify-center gap-2">
         <Badge variant="outline">v {version}</Badge>
-        <GitHubButton />
         <DownloadApkButton />
       </div>
     </aside>

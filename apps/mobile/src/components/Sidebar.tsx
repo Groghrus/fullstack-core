@@ -18,6 +18,9 @@ import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import {
   BookmarkIcon,
+  BookOpenIcon,
+  CheckIcon,
+  LayoutGridIcon,
   MoonIcon,
   SearchIcon,
   SunIcon,
@@ -101,6 +104,11 @@ export function Sidebar({ width, activeBlock, activeTheme, onClose }: SidebarPro
   const openBlock = (blockId: string) => {
     onClose?.()
     router.push(`/${blockId}`)
+  }
+
+  const openCatalog = () => {
+    onClose?.()
+    router.push('/')
   }
 
   const openBookmarks = () => {
@@ -187,6 +195,7 @@ export function Sidebar({ width, activeBlock, activeTheme, onClose }: SidebarPro
             progress={progress}
             onOpenTheme={openTheme}
             onOpenBlock={openBlock}
+            onOpenCatalog={openCatalog}
             onOpenBookmarks={openBookmarks}
             dark={dark}
             totalDone={totalDone}
@@ -209,6 +218,7 @@ function NavTree({
   progress,
   onOpenTheme,
   onOpenBlock,
+  onOpenCatalog,
   onOpenBookmarks,
   dark,
   totalDone,
@@ -220,6 +230,7 @@ function NavTree({
   progress: Record<string, { status: string; bookmarked: boolean }>
   onOpenTheme: (blockId: string, themeId: string) => void
   onOpenBlock: (blockId: string) => void
+  onOpenCatalog: () => void
   onOpenBookmarks: () => void
   dark: boolean
   totalDone: number
@@ -228,6 +239,16 @@ function NavTree({
 
   return (
     <View style={{ flex: 1 }}>
+      <Pressable
+        onPress={onOpenCatalog}
+        style={styles.navRow}
+      >
+        <LayoutGridIcon color={c.sidebarForeground} size={16} />
+        <Text style={[styles.navRowText, { color: c.sidebarForeground }]}>
+          Каталог
+        </Text>
+      </Pressable>
+
       <Pressable
         onPress={onOpenBookmarks}
         style={styles.navRow}
@@ -306,14 +327,12 @@ function NavTree({
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 12, width: 16 }}>
+                      <Text style={{ width: 16, alignItems: 'center' }}>
                         {done ? (
-                          <Text style={{ color: c.successFg }}>✓</Text>
+                          <CheckIcon color={c.successFg} size={14} />
                         ) : started ? (
-                          <Text style={{ color: c.amber }}>★</Text>
-                        ) : (
-                          ''
-                        )}
+                          <BookOpenIcon color={c.amber} size={14} />
+                        ) : null}
                       </Text>
                       <Text
                         style={[

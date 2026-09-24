@@ -5,7 +5,6 @@ import { getBlocks, getAllThemes } from '@core/content'
 import { Card, CardContent } from '@/components/ui/card'
 import { BookOpen } from 'lucide-react'
 import { DownloadApkButton } from '@/components/ui/download-apk-button'
-import { GitHubButton } from '@/components/ui/github-button'
 
 export default function Home() {
   const blocks = getBlocks()
@@ -21,7 +20,7 @@ export default function Home() {
       {/* Hero / Описание проекта */}
       <header className="mb-10 rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
         <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary mb-4">
-          <BookOpen className="size-3.5" /> Интерактивный справочник & тренажёр
+          <BookOpen className="size-3.5" /> Интерактивный справочник и тренажёр
         </div>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           Fullstack Core
@@ -33,7 +32,6 @@ export default function Home() {
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <DownloadApkButton className="gap-2" />
-          <GitHubButton className="gap-2" />
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-6 sm:grid-cols-3">
