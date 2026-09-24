@@ -1,6 +1,5 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { JSDOM } from 'jsdom'
 import { codeToTokens } from 'shiki'
 
 const MONOREPO_ROOT = path.resolve(import.meta.dirname, '../../..')
@@ -9,55 +8,14 @@ const REGISTRY_PATH = path.join(MONOREPO_ROOT, 'packages', 'content', 'registry.
 const TITLES_PATH = path.join(MONOREPO_ROOT, 'packages', 'content', 'titles.json')
 const OUT_DIR = path.join(import.meta.dirname, '..', 'src', 'generated')
 const OUT_FILE = path.join(OUT_DIR, 'content.ts')
+const MERMAID_LIB_FILE = path.join(OUT_DIR, 'mermaid-lib.ts')
 
-const MF_THEME = process.env.MF_THEME || 'dark'
-
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-  pretendToBeVisual: true,
-})
-globalThis.window = dom.window
-globalThis.document = dom.window.document
-Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true })
-globalThis.HTMLElement = dom.window.HTMLElement
-globalThis.CSSStyleSheet = dom.window.CSSStyleSheet
-globalThis.SVGElement = dom.window.SVGElement
-globalThis.Node = dom.window.Node
-globalThis.Element = dom.window.Element
-
-dom.window.SVGElement.prototype.getBBox = function () {
-  // JSDOM не рендерит SVG, поэтому имитируем измерение текста: длинные подписи
-  // переносятся по ширине ~200px (как браузерный mermaid с htmlLabels),
-  // отчего узел становится выше, а не бесконечно шире.
-  const text = (this.textContent || '').replace(/[{}\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim()
-  const { w, h } = measureText(text)
-  return { x: 0, y: 0, width: w, height: h }
-}
-
-/** imitates browser text measuring done by mermaid's htmlLabels (max-width: 200px). */
-function measureText(text) {
-  const charW = 7.2
-  const padW = 16
-  const padH = 12
-  const lineH = 24
-  const maxInnerW = 200 - padW
-  const raw = (text || '').length * charW
-  const lines = Math.max(1, Math.ceil(raw / maxInnerW))
-  const w = Math.min(raw, maxInnerW) + padW
-  const h = lines * lineH + padH
-  return { w: Math.round(w), h: Math.round(h) }
-}
-
-const mermaid = (await import('mermaid')).default
-
-globalThis.btoa = (s) => Buffer.from(s, 'utf8').toString('base64')
-globalThis.atob = (s) => Buffer.from(s, 'base64').toString('latin1')
-
-mermaid.initialize({
-  startOnLoad: false,
-  theme: MF_THEME,
-  securityLevel: 'strict',
-  fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-})
+/**
+ * Диаграммы НЕ пре-рендерятся в SVG на этапе сборки: в JSDOM нет движка вёрстки,
+ * поэтому метки узлов измерялись неточно и схемы выходили сломанными.
+ * В бандл кладётся ИСХОДНИК mermaid-кода, а рендер выполняется на устройстве
+ * в WebView (настоящий браузер) тем же mermaid-движком, что и в вебе.
+ */
 
 function parseFrontmatter(content) {
   const fm = {}
@@ -198,98 +156,9 @@ function extractText(md) {
   return s.replace(/\s+/g, ' ').trim()
 }
 
-/**
- * JSDOM не измеряет текст, поэтому для flowchart mermaid оставляет foreignObject
- * размером 0 и miscalculates viewBox (берётся из mock getBBox корня <svg>).
- * После рендера пересчитываем размеры узлов по длине подписи и восстанавливаем viewBox.
- */
-function postProcessSvg(svg) {
-  const doc = new dom.window.DOMParser().parseFromString(svg, 'image/svg+xml')
-  const root = doc.documentElement
-  const nodes = root.querySelectorAll('g.node')
-  const clusters = root.querySelectorAll('g.cluster')
-  if (!nodes.length && !clusters.length) return svg
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-  let touched = 0
-
-  // Кластеры (subgraph): включаем их рамки с подписями в границы viewBox.
-  for (const g of clusters) {
-    const rect = g.querySelector(':scope > rect')
-    if (!rect) continue
-    const x = parseFloat(rect.getAttribute('x') || '0')
-    const y = parseFloat(rect.getAttribute('y') || '0')
-    const w = parseFloat(rect.getAttribute('width') || '0')
-    const h = parseFloat(rect.getAttribute('height') || '0')
-    if (!(w > 0) || !(h > 0)) continue
-    minX = Math.min(minX, x)
-    minY = Math.min(minY, y)
-    maxX = Math.max(maxX, x + w)
-    maxY = Math.max(maxY, y + h)
-    touched++
-    // Расширить высоту кластера под заголовок (он рисуется чуть выше rect).
-    const label = g.querySelector('.cluster-label')
-    if (label) {
-      const tm = label.getAttribute('transform')?.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/)
-      if (tm) {
-        const ty = parseFloat(tm[2])
-        minY = Math.min(minY, ty - 3)
-      }
-    }
-  }
-
-  for (const g of nodes) {
-    const tm = g.getAttribute('transform')?.match(/translate\(([-\d.]+), ?([-\d.]+)\)/)
-    if (!tm) continue
-    const tx = parseFloat(tm[1])
-    const ty = parseFloat(tm[2])
-    const label = (g.textContent || '').replace(/<\s*style[^>]*>[\s\S]*?<\/?style>/gi, '').replace(/\s+/g, ' ').trim()
-    const { w: nodeW, h: nodeH } = measureText(label)
-    const rect = g.querySelector('rect.basic, rect[class*="container"]')
-    if (rect) {
-      rect.setAttribute('x', String(-nodeW / 2))
-      rect.setAttribute('y', String(-nodeH / 2))
-      rect.setAttribute('width', String(nodeW))
-      rect.setAttribute('height', String(nodeH))
-      touched++
-    }
-    const fo = g.querySelector('foreignObject')
-    if (fo) {
-      fo.setAttribute('width', String(nodeW - 4))
-      fo.setAttribute('height', String(nodeH - 4))
-    }
-    minX = Math.min(minX, tx - nodeW / 2)
-    minY = Math.min(minY, ty - nodeH / 2)
-    maxX = Math.max(maxX, tx + nodeW / 2)
-    maxY = Math.max(maxY, ty + nodeH / 2)
-  }
-
-  // Подписи рёбер и кластеров: foreignObject без размеров должен показывать текст.
-  for (const fo of root.querySelectorAll('foreignObject')) {
-    if (parseFloat(fo.getAttribute('width') || '0') > 0) continue
-    const text = (fo.textContent || '').replace(/\s+/g, ' ').trim()
-    if (!text) continue
-    const { w, h } = measureText(text)
-    fo.setAttribute('width', String(w))
-    fo.setAttribute('height', String(h))
-  }
-
-  if (touched && isFinite(minX)) {
-    const pad = 8
-    const vbW = maxX - minX + pad * 2
-    const vbH = maxY - minY + pad * 2
-    root.setAttribute('viewBox', `${(minX - pad).toFixed(1)} ${(minY - pad).toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`)
-    const style = root.getAttribute('style') || ''
-    root.setAttribute('style', style.replace(/max-width:\s*[\d.]+\s*px/, `max-width: ${vbW.toFixed(1)}px`))
-  }
-  return new dom.window.XMLSerializer().serializeToString(root)
-}
-
-async function renderDiagram(code, index) {
-  const { svg } = await mermaid.render(`diagram-${index}-${Date.now()}`, code)
-  return postProcessSvg(svg)
+/** Mermaid-исходник кладём в бандл как есть — рендер происходит в WebView на устройстве. */
+function renderDiagram(code) {
+  return code.trim()
 }
 
 async function main() {
@@ -316,19 +185,16 @@ async function main() {
       const codeHits = []
       for (const u of units) {
         if (u.type === 'diagram') {
-          try {
-            const svg = await renderDiagram(u.code, stats.diagrams)
-            stats.diagrams++
-            const id = `d${stats.diagrams - 1}`
-            diagrams.push({ id, svg })
-            unitMeta.push({ type: 'diagram', id })
-          } catch (e) {
-            stats.errors.push(`${blockId}/${themeId}: ${String(e).slice(0, 200)}`)
-            if (stats.errors.length === 1) {
-              console.log('FIRST ERROR STACK:\n' + e.stack.split('\n').slice(0, 15).join('\n'))
-            }
-            unitMeta.push({ type: 'diagram', id: null, error: String(e).slice(0, 200) })
+          const code = renderDiagram(u.code)
+          if (!code) {
+            stats.errors.push(`${blockId}/${themeId}: пустая mermaid-диаграмма`)
+            unitMeta.push({ type: 'diagram', id: null, error: 'пустой mermaid-блок' })
+            continue
           }
+          stats.diagrams++
+          const id = `d${stats.diagrams - 1}`
+          diagrams.push({ id, code })
+          unitMeta.push({ type: 'diagram', id })
         } else {
           codeHits.push(...(await highlightCode(u.content)))
           unitMeta.push({ type: 'md', content: u.content })
@@ -357,7 +223,7 @@ async function main() {
 
   const out = `// Автогенерация: npm run bundle:content (apps/mobile)
 // Источник: packages/content/themes — НЕ РЕДАКТИРОВАТЬ ВРУЧНУЮ.
-export interface Diagram { id: string; svg: string }
+export interface Diagram { id: string; code: string }
 export interface QuizQuestion {
   id: string
   prompt: string
@@ -390,9 +256,28 @@ export const generatedAt = new Date(${Date.now()})\n`
   fs.mkdirSync(OUT_DIR, { recursive: true })
   fs.writeFileSync(OUT_FILE, out, 'utf8')
 
+  // mermaid.min.js как строка: WebView рендерит диаграммы на устройстве тем же движком, что и веб.
+  const libSource = fs.readFileSync(
+    path.join(MONOREPO_ROOT, 'node_modules', 'mermaid', 'dist', 'mermaid.min.js'),
+    'utf8',
+  )
+  const chunkSize = 64 * 1024
+  const chunks = []
+  for (let i = 0; i < libSource.length; i += chunkSize) {
+    chunks.push(JSON.stringify(libSource.slice(i, i + chunkSize)))
+  }
+  const libOut = `// Автогенерация: npm run bundle:content (apps/mobile)
+// mermaid.min.js (v${JSON.parse(fs.readFileSync(path.join(MONOREPO_ROOT, 'node_modules', 'mermaid', 'package.json'), 'utf8')).version}) — НЕ РЕДАКТИРОВАТЬ ВРУЧНУЮ.
+export const MermaidLib = [
+${chunks.map((c) => `  ${c},`).join('\n')}
+].join('')\n`
+  fs.writeFileSync(MERMAID_LIB_FILE, libOut, 'utf8')
+
   const mb = (fs.statSync(OUT_FILE).size / 1024 / 1024).toFixed(2)
+  const libMb = (fs.statSync(MERMAID_LIB_FILE).size / 1024 / 1024).toFixed(2)
   console.log(`files=${stats.files} diagrams=${stats.diagrams} errors=${stats.errors.length}`)
   console.log(`output: ${OUT_FILE} (${mb} MB)`)
+  console.log(`mermaid lib: ${MERMAID_LIB_FILE} (${libMb} MB)`)
   if (stats.errors.length) {
     console.log('--- diagram errors ---')
     for (const e of stats.errors) console.log(e)

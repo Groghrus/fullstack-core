@@ -40,7 +40,7 @@ function renderUnit(u: Unit, data: ThemeData, key: number) {
   }
   const diag = data.diagrams.find((d) => d.id === u.id)
   if (!diag) return null
-  return <Diagram key={key} svg={diag.svg} />
+  return <Diagram key={key} code={diag.code} />
 }
 
 export default function ThemeScreen() {
