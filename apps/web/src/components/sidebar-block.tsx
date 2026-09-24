@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import type { Block } from '@core/content'
 import { getThemeTitle } from '@core/content'
 import type { ThemeProgress } from '@core/config'
@@ -29,7 +29,13 @@ export function ThemeLink({ theme, done, started, isActive }: ThemeLinkProps) {
         isActive && 'bg-accent text-accent-foreground',
       )}
     >
-      <span className="shrink-0 leading-snug">{done ? '✅' : started ? '📖' : ''}</span>
+      <span className="shrink-0 leading-snug">
+        {done ? (
+          <Check className="mt-0.5 size-4 text-emerald-500" />
+        ) : started ? (
+          <BookOpen className="mt-0.5 size-4 text-amber-500" />
+        ) : null}
+      </span>
       <span className="min-w-0 flex-1 break-words">{getThemeTitle(theme.themeId)}</span>
     </Link>
   )
